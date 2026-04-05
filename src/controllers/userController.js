@@ -1,52 +1,27 @@
 import { prisma } from "../config/db.js";
 
-const getTasks = async (req, res) => {
-  const { blockId } = req.params;
+const getUser = async (req, res) => {
+  const { userId } = req.params;
 
   try {
-    const tasks = await prisma.task.findMany({
-      where: { blockId },
-      orderBy: {
-        order: "asc",
-      },
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
     });
 
     return res.status(200).json({
-      data: { tasks },
+      data: { user },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error getting tasks with error: ${err}` });
+    return res.status(404).json({ message: `Error getting user with error: ${err}` });
   }
 };
 
-const createTask = async (req, res) => {
-  const { title, priority, status, order } = req.body;
-  const { blockId } = req.params;
-
-  try {
-    const task = await prisma.task.create({
-      data: {
-        title,
-        priority,
-        status,
-        order,
-        blockId,
-      },
-    });
-    return res.status(201).json({
-      data: { task },
-    });
-  } catch (err) {
-    return res.status(404).json({ message: `Error creating tasks with error: ${err}` });
-  }
-};
-
-const updateTask = async (req, res) => {
-  const { title, priority, status, order } = req.body;
+const updateUser = async (req, res) => {
+  const { fullName, email, phone } = req.body;
   const { id } = req.params;
 
   try {
-    const task = await prisma.task.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id },
     });
 
@@ -72,7 +47,7 @@ const updateTask = async (req, res) => {
   }
 };
 
-const deleteTask = async (req, res) => {
+const deleteUser = async (req, res) => {
   const { id } = req.params;
 
   try {
