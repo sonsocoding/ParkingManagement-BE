@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/generateToken.js";
 
 const register = async (req, res) => {
-  const { username, email, password } = req.body;
+  const { fullName, email, password, phone } = req.body;
 
   const userExist = await prisma.user.findUnique({
     where: { email },
@@ -18,9 +18,10 @@ const register = async (req, res) => {
 
   const user = await prisma.user.create({
     data: {
-      username,
+      fullName,
       email,
       password: hashedPassword,
+      phone,
     },
   });
 
@@ -31,8 +32,9 @@ const register = async (req, res) => {
     data: {
       user: {
         id: user.id,
-        username,
+        fullName,
         email,
+        phone,
       },
     },
     token,
@@ -40,7 +42,7 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
-  const { email, password } = req.body;
+  const { fullName, email, password, phone } = req.body;
 
   const user = await prisma.user.findUnique({
     where: { email },
@@ -63,8 +65,9 @@ const login = async (req, res) => {
     data: {
       user: {
         id: user.id,
-        username: user.username,
+        fullName,
         email,
+        phone,
       },
     },
     token,
@@ -86,7 +89,7 @@ const logout = async (req, res) => {
 const getMe = async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
-    select: { id: true, username: true, email: true },
+    select: { id: true, fullName: true, email: true, phone: true },
   });
 
   if (!user) {

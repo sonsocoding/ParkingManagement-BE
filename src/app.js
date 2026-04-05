@@ -3,9 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
-import authRoute from "./routes/authRoute.js";
-import blockRoute from "./routes/blockRoute.js";
-import taskRoute from "./routes/taskRoute.js";
+// import routes
 
 dotenv.config();
 
@@ -29,8 +27,6 @@ app.use(
 app.use(express.json()); // lets express read json from request body
 app.use(cookieParser()); // lets express access req.cookies
 
-app.use("/api/auth", authRoute);
-app.use("/api/block", blockRoute);
-app.use("/api", taskRoute);
+// use routes
 
 export default app;

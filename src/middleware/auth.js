@@ -5,6 +5,7 @@ export const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   let token;
 
+  // header for test and localStorage, cookie for production and security
   if (authHeader && authHeader.startsWith("Bearer")) {
     token = authHeader.split(" ")[1];
   } else if (req.cookies?.jwt) {
@@ -27,7 +28,7 @@ export const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized, user not found" });
     }
 
-    req.user = user;
+    req.user = user; // only backend can see this
     next();
   } catch (err) {
     return res.status(401).json({ message: "Unauthorized, token failed" });
