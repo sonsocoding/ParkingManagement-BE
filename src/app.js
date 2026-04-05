@@ -4,14 +4,13 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 
 // import routes
+import authRoute from "./routes/authRoute.js";
 
 dotenv.config();
 
 const app = express();
 
 const allowedOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
   "http://localhost:3001",
   "http://127.0.0.1:3001",
   process.env.FRONTEND_URL,
@@ -28,5 +27,6 @@ app.use(express.json()); // lets express read json from request body
 app.use(cookieParser()); // lets express access req.cookies
 
 // use routes
+app.use("/api/auth", authRoute);
 
 export default app;
