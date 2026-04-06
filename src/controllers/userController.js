@@ -1,7 +1,7 @@
 import { prisma } from "../config/db.js";
 
 const getUser = async (req, res) => {
-  const { userId } = req.params;
+  const { userId } = req.user.id;
 
   try {
     const user = await prisma.user.findUnique({
@@ -18,47 +18,46 @@ const getUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   const { fullName, email, phone } = req.body;
-  const { id } = req.params;
+  const { userId } = req.user.id;
 
   try {
     const user = await prisma.user.findUnique({
-      where: { id },
+      where: { id: userId },
     });
 
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const updatedTask = await prisma.task.update({
-      where: { id },
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
       data: {
-        title,
-        priority,
-        status,
-        order,
+        fullName,
+        email,
+        phone,
       },
     });
 
     return res.status(200).json({
-      data: { updatedTask },
+      data: { updatedUser },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error updating tasks with error: ${err}` });
+    return res.status(404).json({ message: `Error updating user with error: ${err}` });
   }
 };
 
 const deleteUser = async (req, res) => {
-  const { id } = req.params;
+  const { userId } = req.user.id;
 
   try {
-    await prisma.task.delete({
-      where: { id },
+    await prisma.user.delete({
+      where: { id: userId },
     });
 
-    return res.status(204).json({ message: "Successfully delete this task" });
+    return res.status(204).json({ message: "Successfully delete this user" });
   } catch (err) {
-    return res.status(404).json({ message: `Error deleting tasks with error: ${err}` });
+    return res.status(404).json({ message: `Error deleting user with error: ${err}` });
   }
 };
 
-export { createTask, getTasks, updateTask, deleteTask };
+export { getUser, updateUser, deleteUser };

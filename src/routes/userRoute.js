@@ -8,8 +8,8 @@ const router = express.Router();
 router.use(authenticate);
 router.use(authorize("USER"));
 
-router.get("/user/:id", getUser);
-router.put("/user/:id", updateUser);
-router.delete("/user/:id", deleteUser);
+router.get("/user", getUser);
+router.put("/user", updateUser);
+router.delete("/user", deleteUser);
 
 export default router;
