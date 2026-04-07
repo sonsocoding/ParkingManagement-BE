@@ -5,6 +5,8 @@ import cookieParser from "cookie-parser";
 
 // import routes
 import authRoute from "./routes/authRoutes.js";
+import userRoute from "./routes/userRoutes.js";
+import vehicleRoute from "./routes/vehicleRoutes.js";
 
 dotenv.config();
 
@@ -28,5 +30,7 @@ app.use(cookieParser()); // lets express access req.cookies
 
 // use routes
 app.use("/api/auth", authRoute);
+app.use("/api/users", userRoute);
+app.use("/api/vehicles", vehicleRoute);
 
 export default app;
