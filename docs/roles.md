@@ -17,7 +17,6 @@ This document clarifies the permissions and capabilities for each role in the Sm
 | **Edit Own Profile**            | ✅                | ✅    | ✅      |
 | **Edit Other Profiles**         | ❌                | ✅    | ❌      |
 | **Create User Account**         | Self-registration | ✅    | ❌      |
-| **Lock/Unlock Users**           | ❌                | ✅    | ❌      |
 | **View Own Vehicles**           | ✅                | ✅    | ✅      |
 | **View All Vehicles**           | ❌                | ✅    | ✅      |
 | **Search Parking Lots**         | ✅                | ✅    | ✅      |

@@ -1,6 +1,6 @@
 import { prisma } from "../config/db.js";
 
-const getUser = async (req, res) => {
+const getOwnProfile = async (req, res) => {
   const { userId } = req.user.id;
 
   try {
@@ -12,11 +12,11 @@ const getUser = async (req, res) => {
       data: { user },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error getting user with error: ${err}` });
+    return res.status(404).json({ message: `Error getting profile with error: ${err}` });
   }
 };
 
-const updateUser = async (req, res) => {
+const updateOwnProfile = async (req, res) => {
   const { fullName, email, phone } = req.body;
   const { userId } = req.user.id;
 
@@ -42,16 +42,95 @@ const updateUser = async (req, res) => {
       data: { updatedUser },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error updating user with error: ${err}` });
+    return res.status(404).json({ message: `Error updating profile with error: ${err}` });
   }
 };
 
-const deleteUser = async (req, res) => {
+const deleteOwnProfile = async (req, res) => {
   const { userId } = req.user.id;
 
   try {
     await prisma.user.delete({
       where: { id: userId },
+    });
+
+    return res.status(204).json({ message: "Successfully delete your account" });
+  } catch (err) {
+    return res.status(404).json({ message: `Error deleting account with error: ${err}` });
+  }
+};
+
+const createUser = async (req, res) => {
+  const { fullName, email, phone, password, role } = req.body;
+
+  try {
+    const user = await prisma.user.create({
+      data: {
+        fullName,
+        email,
+        phone,
+        password,
+        role,
+      },
+    });
+
+    return res.status(201).json({
+      data: { user },
+    });
+  } catch (err) {
+    return res.status(404).json({ message: `Error creating user with error: ${err}` });
+  }
+};
+
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await prisma.user.findMany();
+
+    return res.status(200).json({
+      data: { users },
+    });
+  } catch (err) {
+    return res.status(404).json({ message: `Error getting users with error: ${err}` });
+  }
+};
+
+const updateUser = async (req, res) => {
+  const { id } = req.params;
+  const { fullName, email, phone, role } = req.body;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        fullName,
+        email,
+        phone,
+        role,
+      },
+    });
+
+    return res.status(200).json({
+      data: { updatedUser },
+    });
+  } catch (err) {
+    return res.status(404).json({ message: `Error updating user with error: ${err}` });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await prisma.user.delete({
+      where: { id },
     });
 
     return res.status(204).json({ message: "Successfully delete this user" });
@@ -60,4 +139,12 @@ const deleteUser = async (req, res) => {
   }
 };
 
-export { getUser, updateUser, deleteUser };
+export {
+  getOwnProfile,
+  updateOwnProfile,
+  deleteOwnProfile,
+  createUser,
+  getAllUsers,
+  updateUser,
+  deleteUser,
+};
