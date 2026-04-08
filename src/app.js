@@ -9,7 +9,6 @@ import userRoute from "./routes/userRoutes.js";
 import vehicleRoute from "./routes/vehicleRoutes.js";
 
 dotenv.config();
-
 const app = express();
 
 const allowedOrigins = [

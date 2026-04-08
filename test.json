@@ -1,0 +1,398 @@
+{
+  "info": {
+    "name": "Smart Parking Management System",
+    "description": "API tests for User and Vehicle models based on RBAC schema.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Personal",
+          "item": [
+            {
+              "name": "Get Own Profile",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/me",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", "me"]
+                }
+              }
+            },
+            {
+              "name": "Update Own Profile",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fullName\": \"John Doe Updated\",\n  \"phone\": \"+84123456789\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/me",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", "me"]
+                }
+              }
+            },
+            {
+              "name": "Delete Own Profile",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/me",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", "me"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin & Manager",
+          "item": [
+            {
+              "name": "Get All Users",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users"]
+                }
+              }
+            },
+            {
+              "name": "Create User (Admin)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"securepassword123\",\n  \"fullName\": \"Jane Smith\",\n  \"role\": \"MANAGER\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/create",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", "create"]
+                }
+              }
+            },
+            {
+              "name": "Update User (Admin)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": \"ADMIN\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "cuid_placeholder"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete User (Admin)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "cuid_placeholder"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vehicles",
+      "item": [
+        {
+          "name": "Personal",
+          "item": [
+            {
+              "name": "Create Vehicle",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"plateNumber\": \"29A-12345\",\n  \"vehicleType\": \"CAR\",\n  \"color\": \"Black\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/vehicles",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "vehicles"]
+                }
+              }
+            },
+            {
+              "name": "Get Own Vehicles",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/vehicles/me",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "vehicles", "me"]
+                }
+              }
+            },
+            {
+              "name": "Update Own Vehicle",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"color\": \"Matte Black\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/vehicles/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "vehicles", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "cuid_placeholder"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Own Vehicle",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/vehicles/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "vehicles", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "cuid_placeholder"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin & Manager",
+          "item": [
+            {
+              "name": "Get All Vehicles",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/vehicles",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "vehicles"]
+                }
+              }
+            },
+            {
+              "name": "Get Vehicle By ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/vehicles/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "vehicles", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "cuid_placeholder"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Vehicle (Admin)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"plateNumber\": \"30A-99999\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/vehicles/:id/admin",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "vehicles", ":id", "admin"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "cuid_placeholder"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Vehicle (Admin)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{admin_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/vehicles/:id/admin",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "vehicles", ":id", "admin"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "cuid_placeholder"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "token",
+      "value": "your_user_jwt_token_here"
+    },
+    {
+      "key": "admin_token",
+      "value": "your_admin_jwt_token_here"
+    }
+  ]
+}

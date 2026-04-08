@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticate } from "../middleware/auth.js";
+import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import {
   createVehicle,
@@ -28,6 +28,6 @@ router.get("/:id", authorize("ADMIN", "MANAGER"), getVehicleById);
 
 // -- only admin --
 router.put("/:id/admin", authorize("ADMIN"), updateVehicleById);
-router.delete("/:id", authorize("ADMIN"), deleteVehicleById);
+router.delete("/:id/admin", authorize("ADMIN"), deleteVehicleById);
 
 export default router;

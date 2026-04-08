@@ -1,7 +1,7 @@
 import { prisma } from "../config/db.js";
 
 const getOwnProfile = async (req, res) => {
-  const { userId } = req.user.id;
+  const userId = req.user.id;
 
   try {
     const user = await prisma.user.findUnique({
@@ -18,7 +18,7 @@ const getOwnProfile = async (req, res) => {
 
 const updateOwnProfile = async (req, res) => {
   const { fullName, email, phone } = req.body;
-  const { userId } = req.user.id;
+  const userId = req.user.id;
 
   try {
     const user = await prisma.user.findUnique({
@@ -47,7 +47,7 @@ const updateOwnProfile = async (req, res) => {
 };
 
 const deleteOwnProfile = async (req, res) => {
-  const { userId } = req.user.id;
+  const userId = req.user.id;
 
   try {
     await prisma.user.delete({

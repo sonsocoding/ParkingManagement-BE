@@ -2,7 +2,7 @@ import { prisma } from "../config/db.js";
 
 const createVehicle = async (req, res) => {
   const { plateNumber, vehicleType, color } = req.body;
-  const { userId } = req.user.id;
+  const userId = req.user.id;
 
   try {
     const vehicle = await prisma.vehicle.create({
@@ -23,7 +23,7 @@ const createVehicle = async (req, res) => {
 };
 
 const getOwnVehicle = async (req, res) => {
-  const { userId } = req.user.id;
+  const userId = req.user.id;
 
   try {
     const vehicle = await prisma.vehicle.findMany({
@@ -40,19 +40,24 @@ const getOwnVehicle = async (req, res) => {
 
 const updateOwnVehicle = async (req, res) => {
   const { plateNumber, vehicleType, color } = req.body;
-  const { userId } = req.user.id;
+  const userId = req.user.id;
+  const id = req.params.id;
 
   try {
     const vehicle = await prisma.vehicle.findUnique({
-      where: { userId },
+      where: { id },
     });
 
     if (!vehicle) {
       return res.status(404).json({ message: "Vehicle not found" });
     }
 
+    if (vehicle.userId !== userId) {
+      return res.status(403).json({ message: "Forbidden: You are not the owner of this vehicle" });
+    }
+
     const updatedVehicle = await prisma.vehicle.update({
-      where: { userId },
+      where: { id },
       data: {
         plateNumber,
         vehicleType,
@@ -69,19 +74,24 @@ const updateOwnVehicle = async (req, res) => {
 };
 
 const deleteOwnVehicle = async (req, res) => {
-  const { userId } = req.user.id;
+  const userId = req.user.id;
+  const id = req.params.id;
 
   try {
     const vehicle = await prisma.vehicle.findUnique({
-      where: { userId },
+      where: { id },
     });
 
     if (!vehicle) {
       return res.status(404).json({ message: "Vehicle not found" });
     }
 
+    if (vehicle.userId !== userId) {
+      return res.status(403).json({ message: "Forbidden: You are not the owner of this vehicle" });
+    }
+
     const deletedVehicle = await prisma.vehicle.delete({
-      where: { userId },
+      where: { id },
     });
 
     return res.status(200).json({
@@ -178,7 +188,7 @@ const deleteVehicleById = async (req, res) => {
   }
 };
 
-export default {
+export {
   createVehicle,
   getOwnVehicle,
   updateOwnVehicle,
