@@ -62,6 +62,8 @@ const deleteOwnProfile = async (req, res) => {
 
 const createUser = async (req, res) => {
   const { fullName, email, phone, password, role } = req.body;
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
 
   try {
     const user = await prisma.user.create({
@@ -69,7 +71,7 @@ const createUser = async (req, res) => {
         fullName,
         email,
         phone,
-        password,
+        password: hashedPassword,
         role,
       },
     });

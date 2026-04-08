@@ -5,73 +5,82 @@ import { generateToken } from "../utils/generateToken.js";
 const register = async (req, res) => {
   const { fullName, email, password, phone } = req.body;
 
-  const userExist = await prisma.user.findUnique({
-    where: { email },
-  });
+  try {
+    const userExist = await prisma.user.findUnique({
+      where: { email },
+    });
 
-  if (userExist) {
-    return res.status(401).json({ message: "This email already exists" });
-  }
+    if (userExist) {
+      return res.status(401).json({ message: "This email already exists" });
+    }
 
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-  const user = await prisma.user.create({
-    data: {
-      fullName,
-      email,
-      password: hashedPassword,
-      phone,
-    },
-  });
-
-  const token = generateToken(user.id, res);
-
-  res.status(201).json({
-    status: "success",
-    data: {
-      user: {
-        id: user.id,
+    const user = await prisma.user.create({
+      data: {
         fullName,
         email,
+        password: hashedPassword,
         phone,
       },
-    },
-    token,
-  });
+    });
+
+    const token = generateToken(user.id, res);
+
+    res.status(201).json({
+      status: "success",
+      data: {
+        user: {
+          id: user.id,
+          fullName,
+          email,
+          phone,
+        },
+      },
+      token,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 const login = async (req, res) => {
   const { fullName, email, password, phone } = req.body;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
 
-  const user = await prisma.user.findUnique({
-    where: { email },
-  });
+    if (!user) {
+      return res.status(400).json({ message: "Email or password incorrect" });
+    }
 
-  if (!user) {
-    return res.status(400).json({ message: "Email or password incorrect" });
-  }
+    const isValidPassword = await bcrypt.compare(password, user.password);
 
-  const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(400).json({ message: "Email or password incorrect" });
+    }
 
-  if (!isValidPassword) {
-    return res.status(400).json({ message: "Email or password incorrect" });
-  }
+    const token = generateToken(user.id, res);
 
-  const token = generateToken(user.id, res);
-
-  res.status(200).json({
-    status: "success",
-    data: {
-      user: {
-        id: user.id,
-        fullName,
-        email,
-        phone,
+    res.status(200).json({
+      status: "success",
+      data: {
+        user: {
+          id: user.id,
+          fullName,
+          email,
+          phone,
+        },
       },
-    },
-    token,
-  });
+      token,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 const logout = async (req, res) => {
