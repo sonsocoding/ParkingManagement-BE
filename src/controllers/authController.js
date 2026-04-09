@@ -29,7 +29,6 @@ const register = async (req, res) => {
     const token = generateToken(user.id, res);
 
     res.status(201).json({
-      status: "success",
       data: {
         user: {
           id: user.id,
@@ -67,7 +66,6 @@ const login = async (req, res) => {
     const token = generateToken(user.id, res);
 
     res.status(200).json({
-      status: "success",
       data: {
         user: {
           id: user.id,
@@ -92,7 +90,6 @@ const logout = async (req, res) => {
   });
 
   res.status(200).json({
-    status: "success",
     message: "Logged out successfully",
   });
 };
@@ -108,7 +105,6 @@ const getMe = async (req, res) => {
   }
 
   res.status(200).json({
-    status: "success",
     data: {
       user,
     },

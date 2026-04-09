@@ -1,5 +1,4 @@
 import express from "express";
-import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
@@ -8,7 +7,6 @@ import authRoute from "./routes/authRoutes.js";
 import userRoute from "./routes/userRoutes.js";
 import vehicleRoute from "./routes/vehicleRoutes.js";
 
-dotenv.config();
 const app = express();
 
 const allowedOrigins = [
@@ -31,5 +29,11 @@ app.use(cookieParser()); // lets express access req.cookies
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
 app.use("/api/vehicles", vehicleRoute);
+
+// global error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ status: "error", message: "Internal server error" });
+});
 
 export default app;
