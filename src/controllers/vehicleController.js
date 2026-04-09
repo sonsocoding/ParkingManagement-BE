@@ -18,7 +18,8 @@ const createVehicle = async (req, res) => {
       data: { vehicle },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error creating vehicle with error: ${err}` });
+    console.error("createVehicle error:", err);
+    return res.status(500).json({ message: "Failed to create vehicle" });
   }
 };
 
@@ -34,7 +35,8 @@ const getOwnVehicle = async (req, res) => {
       data: { vehicle },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error getting vehicle with error: ${err}` });
+    console.error("getOwnVehicle error:", err);
+    return res.status(500).json({ message: "Failed to get vehicles" });
   }
 };
 
@@ -69,7 +71,8 @@ const updateOwnVehicle = async (req, res) => {
       data: { updatedVehicle },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error updating vehicle with error: ${err}` });
+    console.error("updateOwnVehicle error:", err);
+    return res.status(500).json({ message: "Failed to update vehicle" });
   }
 };
 
@@ -98,7 +101,8 @@ const deleteOwnVehicle = async (req, res) => {
       data: { deletedVehicle },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error deleting vehicle with error: ${err}` });
+    console.error("deleteOwnVehicle error:", err);
+    return res.status(500).json({ message: "Failed to delete vehicle" });
   }
 };
 
@@ -110,7 +114,8 @@ const getAllVehicles = async (req, res) => {
       data: { vehicles },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error getting vehicles with error: ${err}` });
+    console.error("getAllVehicles error:", err);
+    return res.status(500).json({ message: "Failed to get vehicles" });
   }
 };
 
@@ -130,7 +135,8 @@ const getVehicleById = async (req, res) => {
       data: { vehicle },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error getting vehicle with error: ${err}` });
+    console.error("getVehicleById error:", err);
+    return res.status(500).json({ message: "Failed to get vehicle" });
   }
 };
 
@@ -160,7 +166,8 @@ const updateVehicleById = async (req, res) => {
       data: { updatedVehicle },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error updating vehicle with error: ${err}` });
+    console.error("updateVehicleById error:", err);
+    return res.status(500).json({ message: "Failed to update vehicle" });
   }
 };
 
@@ -184,7 +191,8 @@ const deleteVehicleById = async (req, res) => {
       data: { deletedVehicle },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error deleting vehicle with error: ${err}` });
+    console.error("deleteVehicleById error:", err);
+    return res.status(500).json({ message: "Failed to delete vehicle" });
   }
 };
 

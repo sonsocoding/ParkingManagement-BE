@@ -1,4 +1,5 @@
 import { prisma } from "../config/db.js";
+import bcrypt from "bcryptjs";
 
 const getOwnProfile = async (req, res) => {
   const userId = req.user.id;
@@ -13,7 +14,8 @@ const getOwnProfile = async (req, res) => {
       data: { user },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error getting profile with error: ${err}` });
+    console.error("getOwnProfile error:", err);
+    return res.status(500).json({ message: "Failed to get profile" });
   }
 };
 
@@ -43,7 +45,8 @@ const updateOwnProfile = async (req, res) => {
       data: { updatedUser },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error updating profile with error: ${err}` });
+    console.error("updateOwnProfile error:", err);
+    return res.status(500).json({ message: "Failed to update profile" });
   }
 };
 
@@ -53,6 +56,7 @@ const deleteOwnProfile = async (req, res) => {
   try {
     const deletedUser = await prisma.user.findUnique({
       where: { id: userId },
+      omit: { password: true },
     });
 
     if (!deletedUser) {
@@ -65,7 +69,8 @@ const deleteOwnProfile = async (req, res) => {
 
     return res.status(200).json({ data: deletedUser });
   } catch (err) {
-    return res.status(500).json({ message: `Error deleting account with error: ${err}` });
+    console.error("deleteOwnProfile error:", err);
+    return res.status(500).json({ message: "Failed to delete account" });
   }
 };
 
@@ -89,7 +94,8 @@ const createUser = async (req, res) => {
       data: { user },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error creating user with error: ${err}` });
+    console.error("createUser error:", err);
+    return res.status(500).json({ message: "Failed to create user" });
   }
 };
 
@@ -101,7 +107,8 @@ const getAllUsers = async (req, res) => {
       data: { users },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error getting users with error: ${err}` });
+    console.error("getAllUsers error:", err);
+    return res.status(500).json({ message: "Failed to get users" });
   }
 };
 
@@ -132,7 +139,8 @@ const updateUser = async (req, res) => {
       data: { updatedUser },
     });
   } catch (err) {
-    return res.status(500).json({ message: `Error updating user with error: ${err}` });
+    console.error("updateUser error:", err);
+    return res.status(500).json({ message: "Failed to update user" });
   }
 };
 
@@ -142,6 +150,7 @@ const deleteUserById = async (req, res) => {
   try {
     const deletedUser = await prisma.user.findUnique({
       where: { id },
+      omit: { password: true },
     });
 
     if (!deletedUser) {
@@ -154,7 +163,8 @@ const deleteUserById = async (req, res) => {
 
     return res.status(200).json({ data: deletedUser });
   } catch (err) {
-    return res.status(500).json({ message: `Error deleting user with error: ${err}` });
+    console.error("deleteUserById error:", err);
+    return res.status(500).json({ message: "Failed to delete user" });
   }
 };
 

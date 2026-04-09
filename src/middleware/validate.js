@@ -13,6 +13,7 @@ export const validate = (schema) => (req, res, next) => {
       const errorMessage = err.issues.map(e => e.message).join(', ');
       return res.status(400).json({ message: errorMessage, errors: err.issues });
     }
-    return res.status(400).json({ message: `Error validating with error: ${err.message}` });
+    console.error("Validation error:", err);
+    return res.status(400).json({ message: "Invalid request data" });
   }
 };

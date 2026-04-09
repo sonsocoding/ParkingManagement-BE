@@ -95,20 +95,25 @@ const logout = async (req, res) => {
 };
 
 const getMe = async (req, res) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.user.id },
-    select: { id: true, fullName: true, email: true, phone: true, role: true },
-  });
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, fullName: true, email: true, phone: true, role: true },
+    });
 
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      data: {
+        user,
+      },
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Internal server error" });
   }
-
-  res.status(200).json({
-    data: {
-      user,
-    },
-  });
 };
 
 export { register, login, logout, getMe };
