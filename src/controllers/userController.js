@@ -26,6 +26,7 @@ const updateOwnProfile = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
+      omit: { password: true },
     });
 
     if (!user) {
@@ -88,6 +89,7 @@ const createUser = async (req, res) => {
         password: hashedPassword,
         role,
       },
+      omit: { password: true },
     });
 
     return res.status(201).json({
@@ -119,6 +121,7 @@ const updateUser = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id },
+      omit: { password: true },
     });
 
     if (!user) {

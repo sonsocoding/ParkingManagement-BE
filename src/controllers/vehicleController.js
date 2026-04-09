@@ -5,7 +5,15 @@ const createVehicle = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const vehicle = await prisma.vehicle.create({
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { plateNumber },
+    });
+
+    if (vehicle) {
+      return res.status(409).json({ message: "Plate number already exists" });
+    }
+
+    const newVehicle = await prisma.vehicle.create({
       data: {
         plateNumber,
         vehicleType,
@@ -15,7 +23,7 @@ const createVehicle = async (req, res) => {
     });
 
     return res.status(201).json({
-      data: { vehicle },
+      data: { newVehicle },
     });
   } catch (err) {
     console.error("createVehicle error:", err);
