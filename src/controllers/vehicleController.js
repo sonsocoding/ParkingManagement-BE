@@ -18,7 +18,7 @@ const createVehicle = async (req, res) => {
       data: { vehicle },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error creating vehicle with error: ${err}` });
+    return res.status(500).json({ message: `Error creating vehicle with error: ${err}` });
   }
 };
 
@@ -34,7 +34,7 @@ const getOwnVehicle = async (req, res) => {
       data: { vehicle },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error getting vehicle with error: ${err}` });
+    return res.status(500).json({ message: `Error getting vehicle with error: ${err}` });
   }
 };
 
@@ -69,7 +69,7 @@ const updateOwnVehicle = async (req, res) => {
       data: { updatedVehicle },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error updating vehicle with error: ${err}` });
+    return res.status(500).json({ message: `Error updating vehicle with error: ${err}` });
   }
 };
 
@@ -98,7 +98,7 @@ const deleteOwnVehicle = async (req, res) => {
       data: { deletedVehicle },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error deleting vehicle with error: ${err}` });
+    return res.status(500).json({ message: `Error deleting vehicle with error: ${err}` });
   }
 };
 
@@ -110,7 +110,7 @@ const getAllVehicles = async (req, res) => {
       data: { vehicles },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error getting vehicles with error: ${err}` });
+    return res.status(500).json({ message: `Error getting vehicles with error: ${err}` });
   }
 };
 
@@ -130,7 +130,7 @@ const getVehicleById = async (req, res) => {
       data: { vehicle },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error getting vehicle with error: ${err}` });
+    return res.status(500).json({ message: `Error getting vehicle with error: ${err}` });
   }
 };
 
@@ -160,7 +160,7 @@ const updateVehicleById = async (req, res) => {
       data: { updatedVehicle },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error updating vehicle with error: ${err}` });
+    return res.status(500).json({ message: `Error updating vehicle with error: ${err}` });
   }
 };
 
@@ -184,7 +184,7 @@ const deleteVehicleById = async (req, res) => {
       data: { deletedVehicle },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error deleting vehicle with error: ${err}` });
+    return res.status(500).json({ message: `Error deleting vehicle with error: ${err}` });
   }
 };
 

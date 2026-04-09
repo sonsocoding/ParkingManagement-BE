@@ -11,7 +11,7 @@ const register = async (req, res) => {
     });
 
     if (userExist) {
-      return res.status(401).json({ message: "This email already exists" });
+      return res.status(409).json({ message: "This email already exists" });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -36,6 +36,7 @@ const register = async (req, res) => {
           fullName,
           email,
           phone,
+          role: user.role,
         },
       },
       token,
@@ -47,7 +48,7 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
-  const { fullName, email, password, phone } = req.body;
+  const { email, password } = req.body;
   try {
     const user = await prisma.user.findUnique({
       where: { email },
@@ -70,9 +71,10 @@ const login = async (req, res) => {
       data: {
         user: {
           id: user.id,
-          fullName,
-          email,
-          phone,
+          fullName: user.fullName,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
         },
       },
       token,
@@ -98,7 +100,7 @@ const logout = async (req, res) => {
 const getMe = async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
-    select: { id: true, fullName: true, email: true, phone: true },
+    select: { id: true, fullName: true, email: true, phone: true, role: true },
   });
 
   if (!user) {

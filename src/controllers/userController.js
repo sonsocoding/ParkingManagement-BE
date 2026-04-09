@@ -6,13 +6,14 @@ const getOwnProfile = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
+      omit: { password: true },
     });
 
     return res.status(200).json({
       data: { user },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error getting profile with error: ${err}` });
+    return res.status(500).json({ message: `Error getting profile with error: ${err}` });
   }
 };
 
@@ -42,7 +43,7 @@ const updateOwnProfile = async (req, res) => {
       data: { updatedUser },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error updating profile with error: ${err}` });
+    return res.status(500).json({ message: `Error updating profile with error: ${err}` });
   }
 };
 
@@ -54,9 +55,9 @@ const deleteOwnProfile = async (req, res) => {
       where: { id: userId },
     });
 
-    return res.status(204).json({ message: "Successfully delete your account" });
+    return res.status(200).json({ message: "Successfully delete your account" });
   } catch (err) {
-    return res.status(404).json({ message: `Error deleting account with error: ${err}` });
+    return res.status(500).json({ message: `Error deleting account with error: ${err}` });
   }
 };
 
@@ -80,19 +81,19 @@ const createUser = async (req, res) => {
       data: { user },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error creating user with error: ${err}` });
+    return res.status(500).json({ message: `Error creating user with error: ${err}` });
   }
 };
 
 const getAllUsers = async (req, res) => {
   try {
-    const users = await prisma.user.findMany();
+    const users = await prisma.user.findMany({ omit: { password: true } });
 
     return res.status(200).json({
       data: { users },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error getting users with error: ${err}` });
+    return res.status(500).json({ message: `Error getting users with error: ${err}` });
   }
 };
 
@@ -123,11 +124,11 @@ const updateUser = async (req, res) => {
       data: { updatedUser },
     });
   } catch (err) {
-    return res.status(404).json({ message: `Error updating user with error: ${err}` });
+    return res.status(500).json({ message: `Error updating user with error: ${err}` });
   }
 };
 
-const deleteUser = async (req, res) => {
+const deleteUserById = async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -135,9 +136,9 @@ const deleteUser = async (req, res) => {
       where: { id },
     });
 
-    return res.status(204).json({ message: "Successfully delete this user" });
+    return res.status(200).json({ message: "Successfully delete this user" });
   } catch (err) {
-    return res.status(404).json({ message: `Error deleting user with error: ${err}` });
+    return res.status(500).json({ message: `Error deleting user with error: ${err}` });
   }
 };
 
@@ -148,5 +149,5 @@ export {
   createUser,
   getAllUsers,
   updateUser,
-  deleteUser,
+  deleteUserById,
 };

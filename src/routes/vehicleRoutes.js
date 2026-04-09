@@ -16,12 +16,6 @@ const router = express.Router();
 
 router.use(authenticate);
 
-// -- personal --
-router.post("/", createVehicle);
-router.get("/me", getOwnVehicle);
-router.put("/:id", updateOwnVehicle);
-router.delete("/:id", deleteOwnVehicle);
-
 // -- admin & manager --
 router.get("/", authorize("ADMIN", "MANAGER"), getAllVehicles);
 router.get("/:id", authorize("ADMIN", "MANAGER"), getVehicleById);
@@ -29,5 +23,11 @@ router.get("/:id", authorize("ADMIN", "MANAGER"), getVehicleById);
 // -- only admin --
 router.put("/:id/admin", authorize("ADMIN"), updateVehicleById);
 router.delete("/:id/admin", authorize("ADMIN"), deleteVehicleById);
+
+// -- personal --
+router.post("/", createVehicle);
+router.get("/me", getOwnVehicle);
+router.put("/:id", updateOwnVehicle);
+router.delete("/:id", deleteOwnVehicle);
 
 export default router;
