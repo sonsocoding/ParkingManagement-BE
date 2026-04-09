@@ -51,11 +51,19 @@ const deleteOwnProfile = async (req, res) => {
   const userId = req.user.id;
 
   try {
+    const deletedUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!deletedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     await prisma.user.delete({
       where: { id: userId },
     });
 
-    return res.status(200).json({ message: "Successfully delete your account" });
+    return res.status(200).json({ data: deletedUser });
   } catch (err) {
     return res.status(500).json({ message: `Error deleting account with error: ${err}` });
   }
@@ -132,11 +140,19 @@ const deleteUserById = async (req, res) => {
   const { id } = req.params;
 
   try {
+    const deletedUser = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!deletedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     await prisma.user.delete({
       where: { id },
     });
 
-    return res.status(200).json({ message: "Successfully delete this user" });
+    return res.status(200).json({ data: deletedUser });
   } catch (err) {
     return res.status(500).json({ message: `Error deleting user with error: ${err}` });
   }
