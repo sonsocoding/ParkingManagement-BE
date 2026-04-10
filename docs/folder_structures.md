@@ -19,8 +19,8 @@ backend/
 │   ├── middleware/
 │   │   ├── authenticate.js        # JWT verification → attaches req.user
 │   │   ├── authorize.js           # Role-based gating: authorize("ADMIN", "MANAGER")
-│   │   ├── [TODO] errorHandler.js # Global error handler middleware
-│   │   └── [TODO] validate.js     # Request body validation (zod or express-validator)
+│   │   ├── errorHandler.js # Global error handler middleware
+│   │   └── validate.js     # Request body validation (zod or express-validator)
 │   │
 │   ├── routes/
 │   │   ├── authRoutes.js          # /api/auth — register, login, logout, getMe
@@ -51,15 +51,14 @@ backend/
 │   │
 │   ├── utils/
 │   │   ├── generateToken.js       # JWT sign + set httpOnly cookie
-│   │   ├── [TODO] asyncHandler.js # Wrapper to catch async errors in controllers
-│   │   └── [TODO] formatResponse.js # Standardized { status, data, message } format
+│   │   ├── asyncHandler.js # Wrapper to catch async errors in controllers
+│   │   └── formatResponse.js # Standardized { status, data, message } format
 │   │
 │   └── generated/                 # Prisma Client (auto-generated, git-ignored)
 │
 ├── docs/
 │   ├── roles.md                   # RBAC permission matrix
 │   ├── folder_structures.md       # This file
-│   ├── improvement.md             # Code review & improvement backlog
 │   ├── instruction.md             # Step-by-step backend development guide
 │   └── agent.md                   # AI agent onboarding guide
 │
@@ -72,19 +71,21 @@ backend/
 
 ## Database Schema Overview
 
-| Model | Status | Key Fields |
-|---|---|---|
-| `User` | ✅ Seeded | email, password, fullName, phone, role (ADMIN/MANAGER/USER) |
-| `Vehicle` | ✅ Seeded | plateNumber (unique), vehicleType (CAR/MOTORBIKE), color, → User |
-| `ParkingLot` | ✅ Seeded | name, address, totalSlots, zones (JSON), hourlyRate |
-| `ParkingSlot` | ✅ Seeded | zoneId, slotNumber, vehicleType, status (AVAILABLE/OCCUPIED/RESERVED/MAINTENANCE) |
-| `Booking` | ✅ Seeded | startTime, endTime, estimatedCost, status (PENDING/CONFIRMED/COMPLETED/CANCELLED) |
-| `ParkingRecord` | ✅ Seeded | checkIn, checkOut, actualCost, paymentStatus |
-| `Payment` | ✅ Seeded | amount, method (CASH/CARD/MOMO/VNPAY), status, referenceId |
-| `MonthlyPass` | ✅ Seeded | vehicleType, startDate, endDate, price, status (ACTIVE/EXPIRED/CANCELLED) |
-| `AdminLog` | ✅ Seeded | action, resourceType, resourceId, changes (JSON), ipAddress |
+| Model           | Status    | Key Fields                                                                        |
+| --------------- | --------- | --------------------------------------------------------------------------------- |
+| `User`          | ✅ Seeded | email, password, fullName, phone, role (ADMIN/MANAGER/USER)                       |
+| `Vehicle`       | ✅ Seeded | plateNumber (unique), vehicleType (CAR/MOTORBIKE), color, → User                  |
+| `ParkingLot`    | ✅ Seeded | name, address, totalSlots, zones (JSON), hourlyRate                               |
+| `ParkingSlot`   | ✅ Seeded | zoneId, slotNumber, vehicleType, status (AVAILABLE/OCCUPIED/RESERVED/MAINTENANCE) |
+| `Booking`       | ✅ Seeded | startTime, endTime, estimatedCost, status (PENDING/CONFIRMED/COMPLETED/CANCELLED) |
+| `ParkingRecord` | ✅ Seeded | checkIn, checkOut, actualCost, paymentStatus                                      |
+| `Payment`       | ✅ Seeded | amount, method (CASH/CARD/MOMO/VNPAY), status, referenceId                        |
+| `MonthlyPass`   | ✅ Seeded | vehicleType, startDate, endDate, price, status (ACTIVE/EXPIRED/CANCELLED)         |
+| `AdminLog`      | ✅ Seeded | action, resourceType, resourceId, changes (JSON), ipAddress                       |
 
 ## Tech Stack
+
+j
 
 - **Runtime**: Node.js (ES Modules)
 - **Framework**: Express 5
