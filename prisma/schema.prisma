@@ -63,12 +63,14 @@ enum VehicleType {
 
 // ParkingLot model - parking facility information
 model ParkingLot {
-  id         String  @id @default(cuid())
-  name       String
-  address    String
-  totalSlots Int
-  zones      Json? // stores zone configuration: { carZones: [...], motoZones: [...] }
-  hourlyRate Decimal @db.Decimal(10, 2)
+  id                  String       @id @default(cuid())
+  name                String
+  address             String
+  totalSlots          Int
+  lotType             LotType      @default(BOTH)
+  zones               Json? // stores zone configuration: { carZones: [...], motoZones: [...] }
+  carHourlyRate       Decimal?     @db.Decimal(10, 2)
+  motorbikeHourlyRate Decimal?     @db.Decimal(10, 2)
 
   // Relations
   slots          ParkingSlot[]
@@ -78,6 +80,12 @@ model ParkingLot {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum LotType {
+  CAR_ONLY
+  MOTORBIKE_ONLY
+  BOTH
 }
 
 // ParkingSlot model - individual parking spaces

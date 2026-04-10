@@ -61,7 +61,8 @@ async function main() {
       name: "Bãi Đỗ Tây Hồ",
       address: "Số 123, Đường Tây Hồ, Quận Tây Hồ, Hà Nội",
       totalSlots: 100,
-      hourlyRate: 50000, // 50,000 VND/hour
+      carHourlyRate: 50000, // 50,000 VND/hour
+      motorbikeHourlyRate: 10000, // 10,000 VND/hour
       zones: {
         carZones: [
           { zoneId: "A", name: "Khu A", slotCount: 30 },

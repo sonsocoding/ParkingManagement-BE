@@ -2,7 +2,11 @@ import express from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
-import { updateOwnProfileSchema, createUserSchema, updateUserSchema } from "../schemas/userSchema.js";
+import {
+  updateOwnProfileSchema,
+  createUserSchema,
+  updateUserSchema,
+} from "../schemas/userSchema.js";
 import {
   getOwnProfile,
   updateOwnProfile,
@@ -14,7 +18,6 @@ import {
 } from "../controllers/userController.js";
 
 const router = express.Router();
-
 router.use(authenticate);
 
 // -- admin & manager --

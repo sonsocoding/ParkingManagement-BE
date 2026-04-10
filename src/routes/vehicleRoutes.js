@@ -15,7 +15,6 @@ import {
 } from "../controllers/vehicleController.js";
 
 const router = express.Router();
-
 router.use(authenticate);
 
 // -- STATIC ROUTES (No parameters) --
