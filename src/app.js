@@ -7,6 +7,9 @@ import authRoute from "./routes/authRoutes.js";
 import userRoute from "./routes/userRoutes.js";
 import vehicleRoute from "./routes/vehicleRoutes.js";
 
+// import middleware
+import { errorHandler } from "./middleware/errorHandler.js";
+
 const app = express();
 
 const allowedOrigins = [
@@ -31,9 +34,6 @@ app.use("/api/users", userRoute);
 app.use("/api/vehicles", vehicleRoute);
 
 // global error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ status: "error", message: "Internal server error" });
-});
+app.use(errorHandler);
 
 export default app;
