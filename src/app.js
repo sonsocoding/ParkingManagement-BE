@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import authRoute from "./routes/authRoutes.js";
 import userRoute from "./routes/userRoutes.js";
 import vehicleRoute from "./routes/vehicleRoutes.js";
+import parkingLotRoute from "./routes/parkingLotRoutes.js";
 
 // import middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -32,6 +33,7 @@ app.use(cookieParser()); // lets express access req.cookies
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
 app.use("/api/vehicles", vehicleRoute);
+app.use("/api/parking-lots", parkingLotRoute);
 
 // global error handler
 app.use(errorHandler);

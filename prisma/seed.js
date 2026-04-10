@@ -1,4 +1,4 @@
-import { PrismaClient } from "../generated/client.js";
+import { PrismaClient } from "../src/generated/client.js";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -76,6 +76,45 @@ async function main() {
     },
   });
   console.log("✅ Created parking lot:", parkingLot.name);
+
+  // ===== CREATE PARKING LOT 2 =====
+  const parkingLot2 = await prisma.parkingLot.create({
+    data: {
+      name: "Bãi Đỗ Bách Khoa",
+      address: "Số 1 Đại Cồ Việt, Hai Bà Trưng, Hà Nội",
+      totalSlots: 150,
+      lotType: "BOTH",
+      carHourlyRate: 40000,
+      motorbikeHourlyRate: 5000,
+      zones: {
+        carZones: [
+          { zoneId: "E", name: "Khu E", slotCount: 50 },
+        ],
+        motoZones: [
+          { zoneId: "F", name: "Khu F", slotCount: 100 },
+        ],
+      },
+    },
+  });
+  console.log("✅ Created parking lot:", parkingLot2.name);
+
+  // ===== CREATE PARKING LOT 3 =====
+  const parkingLot3 = await prisma.parkingLot.create({
+    data: {
+      name: "Bãi Đỗ Ô Tô Cầu Giấy",
+      address: "241 Xuân Thủy, Cầu Giấy, Hà Nội",
+      totalSlots: 80,
+      lotType: "CAR_ONLY",
+      carHourlyRate: 60000,
+      zones: {
+        carZones: [
+          { zoneId: "VIP", name: "Khu VIP", slotCount: 20 },
+          { zoneId: "G", name: "Khu G", slotCount: 60 },
+        ],
+      },
+    },
+  });
+  console.log("✅ Created parking lot:", parkingLot3.name);
 
   // ===== CREATE PARKING SLOTS =====
   const slots = [];
@@ -253,7 +292,7 @@ async function main() {
   // ===== DISPLAY SUMMARY =====
   console.log("📊 Summary:");
   console.log(`   - Users: 3 (Admin, Manager, User)`);
-  console.log(`   - Parking Lot: 1`);
+  console.log(`   - Parking Lot: 3`);
   console.log(`   - Parking Slots: ${slots.length}`);
   console.log(`   - Vehicles: 2`);
   console.log(`   - Bookings: 2`);
