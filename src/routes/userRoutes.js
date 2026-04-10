@@ -1,6 +1,8 @@
 import express from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
+import { validate } from "../middleware/validate.js";
+import { updateOwnProfileSchema, createUserSchema, updateUserSchema } from "../schemas/userSchema.js";
 import {
   getOwnProfile,
   updateOwnProfile,
@@ -20,12 +22,12 @@ router.get("/", authorize("ADMIN", "MANAGER"), getAllUsers);
 
 // -- personal --
 router.get("/me", getOwnProfile);
-router.put("/me", updateOwnProfile);
+router.put("/me", validate(updateOwnProfileSchema), updateOwnProfile);
 router.delete("/me", deleteOwnProfile);
 
 // -- only admin --
-router.post("/", authorize("ADMIN"), createUser);
-router.put("/:id", authorize("ADMIN"), updateUser);
+router.post("/", authorize("ADMIN"), validate(createUserSchema), createUser);
+router.put("/:id", authorize("ADMIN"), validate(updateUserSchema), updateUser);
 router.delete("/:id", authorize("ADMIN"), deleteUserById);
 
 export default router;

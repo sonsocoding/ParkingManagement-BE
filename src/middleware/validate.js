@@ -1,4 +1,5 @@
 import { ZodError } from "zod";
+import { formatError } from "../utils/formatResponse.js";
 
 export const validate = (schema) => (req, res, next) => {
   try {
@@ -10,10 +11,10 @@ export const validate = (schema) => (req, res, next) => {
     next();
   } catch (err) {
     if (err instanceof ZodError) {
-      const errorMessage = err.issues.map(e => e.message).join(', ');
-      return res.status(400).json({ message: errorMessage, errors: err.issues });
+      const errorMessage = err.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ').replace(/^body\./g, '');
+      return res.status(400).json(formatError(errorMessage));
     }
     console.error("Validation error:", err);
-    return res.status(400).json({ message: "Invalid request data" });
+    return res.status(400).json(formatError("Invalid request data"));
   }
 };
