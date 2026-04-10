@@ -1,3 +1,5 @@
+import { formatError } from "../utils/formatResponse.js";
+
 export const errorHandler = (err, req, res, next) => {
   // Log the full error server-side
   console.error("Global Error Handler caught an error:", err);
@@ -46,8 +48,5 @@ export const errorHandler = (err, req, res, next) => {
     message = "Internal server error";
   }
 
-  return res.status(statusCode).json({
-    status: "error",
-    message,
-  });
+  return res.status(statusCode).json(formatError(message));
 };

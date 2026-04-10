@@ -1,5 +1,6 @@
 import { prisma } from "../config/db.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { formatSuccess, formatError } from "../utils/formatResponse.js";
 
 const createVehicle = asyncHandler(async (req, res) => {
   const { plateNumber, vehicleType, color } = req.body;
@@ -10,7 +11,7 @@ const createVehicle = asyncHandler(async (req, res) => {
   });
 
   if (vehicle) {
-    return res.status(409).json({ message: "Plate number already exists" });
+    return res.status(409).json(formatError("Plate number already exists"));
   }
 
   const newVehicle = await prisma.vehicle.create({
@@ -22,9 +23,7 @@ const createVehicle = asyncHandler(async (req, res) => {
     },
   });
 
-  return res.status(201).json({
-    data: { newVehicle },
-  });
+  return res.status(201).json(formatSuccess({ newVehicle }));
 });
 
 const getOwnVehicle = asyncHandler(async (req, res) => {
@@ -34,9 +33,7 @@ const getOwnVehicle = asyncHandler(async (req, res) => {
     where: { userId },
   });
 
-  return res.status(200).json({
-    data: { vehicle },
-  });
+  return res.status(200).json(formatSuccess({ vehicle }));
 });
 
 const updateOwnVehicle = asyncHandler(async (req, res) => {
@@ -49,11 +46,11 @@ const updateOwnVehicle = asyncHandler(async (req, res) => {
   });
 
   if (!vehicle) {
-    return res.status(404).json({ message: "Vehicle not found" });
+    return res.status(404).json(formatError("Vehicle not found"));
   }
 
   if (vehicle.userId !== userId) {
-    return res.status(403).json({ message: "Forbidden: You are not the owner of this vehicle" });
+    return res.status(403).json(formatError("Forbidden: You are not the owner of this vehicle"));
   }
 
   const updatedVehicle = await prisma.vehicle.update({
@@ -65,9 +62,7 @@ const updateOwnVehicle = asyncHandler(async (req, res) => {
     },
   });
 
-  return res.status(200).json({
-    data: { updatedVehicle },
-  });
+  return res.status(200).json(formatSuccess({ updatedVehicle }));
 });
 
 const deleteOwnVehicle = asyncHandler(async (req, res) => {
@@ -79,28 +74,24 @@ const deleteOwnVehicle = asyncHandler(async (req, res) => {
   });
 
   if (!vehicle) {
-    return res.status(404).json({ message: "Vehicle not found" });
+    return res.status(404).json(formatError("Vehicle not found"));
   }
 
   if (vehicle.userId !== userId) {
-    return res.status(403).json({ message: "Forbidden: You are not the owner of this vehicle" });
+    return res.status(403).json(formatError("Forbidden: You are not the owner of this vehicle"));
   }
 
   const deletedVehicle = await prisma.vehicle.delete({
     where: { id },
   });
 
-  return res.status(200).json({
-    data: { deletedVehicle },
-  });
+  return res.status(200).json(formatSuccess({ deletedVehicle }));
 });
 
 const getAllVehicles = asyncHandler(async (req, res) => {
   const vehicles = await prisma.vehicle.findMany();
 
-  return res.status(200).json({
-    data: { vehicles },
-  });
+  return res.status(200).json(formatSuccess({ vehicles }));
 });
 
 const getVehicleById = asyncHandler(async (req, res) => {
@@ -111,12 +102,10 @@ const getVehicleById = asyncHandler(async (req, res) => {
   });
 
   if (!vehicle) {
-    return res.status(404).json({ message: "Vehicle not found" });
+    return res.status(404).json(formatError("Vehicle not found"));
   }
 
-  return res.status(200).json({
-    data: { vehicle },
-  });
+  return res.status(200).json(formatSuccess({ vehicle }));
 });
 
 const updateVehicleById = asyncHandler(async (req, res) => {
@@ -128,7 +117,7 @@ const updateVehicleById = asyncHandler(async (req, res) => {
   });
 
   if (!vehicle) {
-    return res.status(404).json({ message: "Vehicle not found" });
+    return res.status(404).json(formatError("Vehicle not found"));
   }
 
   const updatedVehicle = await prisma.vehicle.update({
@@ -140,9 +129,7 @@ const updateVehicleById = asyncHandler(async (req, res) => {
     },
   });
 
-  return res.status(200).json({
-    data: { updatedVehicle },
-  });
+  return res.status(200).json(formatSuccess({ updatedVehicle }));
 });
 
 const deleteVehicleById = asyncHandler(async (req, res) => {
@@ -153,16 +140,14 @@ const deleteVehicleById = asyncHandler(async (req, res) => {
   });
 
   if (!vehicle) {
-    return res.status(404).json({ message: "Vehicle not found" });
+    return res.status(404).json(formatError("Vehicle not found"));
   }
 
   const deletedVehicle = await prisma.vehicle.delete({
     where: { id },
   });
 
-  return res.status(200).json({
-    data: { deletedVehicle },
-  });
+  return res.status(200).json(formatSuccess({ deletedVehicle }));
 });
 
 export {

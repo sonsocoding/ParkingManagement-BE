@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import bcrypt from "bcryptjs";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { formatSuccess, formatError } from "../utils/formatResponse.js";
 
 const getOwnProfile = asyncHandler(async (req, res) => {
   const userId = req.user.id;
@@ -10,9 +11,7 @@ const getOwnProfile = asyncHandler(async (req, res) => {
     omit: { password: true },
   });
 
-  return res.status(200).json({
-    data: { user },
-  });
+  return res.status(200).json(formatSuccess({ user }));
 });
 
 const updateOwnProfile = asyncHandler(async (req, res) => {
@@ -25,7 +24,7 @@ const updateOwnProfile = asyncHandler(async (req, res) => {
   });
 
   if (!user) {
-    return res.status(404).json({ message: "User not found" });
+    return res.status(404).json(formatError("User not found"));
   }
 
   const updatedUser = await prisma.user.update({
@@ -37,9 +36,7 @@ const updateOwnProfile = asyncHandler(async (req, res) => {
     },
   });
 
-  return res.status(200).json({
-    data: { updatedUser },
-  });
+  return res.status(200).json(formatSuccess({ updatedUser }));
 });
 
 const deleteOwnProfile = asyncHandler(async (req, res) => {
@@ -51,14 +48,14 @@ const deleteOwnProfile = asyncHandler(async (req, res) => {
   });
 
   if (!deletedUser) {
-    return res.status(404).json({ message: "User not found" });
+    return res.status(404).json(formatError("User not found"));
   }
 
   await prisma.user.delete({
     where: { id: userId },
   });
 
-  return res.status(200).json({ data: deletedUser });
+  return res.status(200).json(formatSuccess({ deletedUser }));
 });
 
 const createUser = asyncHandler(async (req, res) => {
@@ -77,17 +74,13 @@ const createUser = asyncHandler(async (req, res) => {
     omit: { password: true },
   });
 
-  return res.status(201).json({
-    data: { user },
-  });
+  return res.status(201).json(formatSuccess({ user }));
 });
 
 const getAllUsers = asyncHandler(async (req, res) => {
   const users = await prisma.user.findMany({ omit: { password: true } });
 
-  return res.status(200).json({
-    data: { users },
-  });
+  return res.status(200).json(formatSuccess({ users }));
 });
 
 const updateUser = asyncHandler(async (req, res) => {
@@ -100,7 +93,7 @@ const updateUser = asyncHandler(async (req, res) => {
   });
 
   if (!user) {
-    return res.status(404).json({ message: "User not found" });
+    return res.status(404).json(formatError("User not found"));
   }
 
   const updatedUser = await prisma.user.update({
@@ -113,9 +106,7 @@ const updateUser = asyncHandler(async (req, res) => {
     },
   });
 
-  return res.status(200).json({
-    data: { updatedUser },
-  });
+  return res.status(200).json(formatSuccess({ updatedUser }));
 });
 
 const deleteUserById = asyncHandler(async (req, res) => {
@@ -127,14 +118,14 @@ const deleteUserById = asyncHandler(async (req, res) => {
   });
 
   if (!deletedUser) {
-    return res.status(404).json({ message: "User not found" });
+    return res.status(404).json(formatError("User not found"));
   }
 
   await prisma.user.delete({
     where: { id },
   });
 
-  return res.status(200).json({ data: deletedUser });
+  return res.status(200).json(formatSuccess({ deletedUser }));
 });
 
 export {

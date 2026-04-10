@@ -2,6 +2,7 @@ import { prisma } from "../config/db.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/generateToken.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { formatSuccess, formatError } from "../utils/formatResponse.js";
 
 const register = asyncHandler(async (req, res) => {
   const { fullName, email, password, phone } = req.body;
@@ -11,7 +12,7 @@ const register = asyncHandler(async (req, res) => {
   });
 
   if (userExist) {
-    return res.status(409).json({ message: "This email already exists" });
+    return res.status(409).json(formatError("This email already exists"));
   }
 
   const salt = await bcrypt.genSalt(10);
@@ -28,18 +29,16 @@ const register = asyncHandler(async (req, res) => {
 
   const token = generateToken(user.id, res);
 
-  res.status(201).json({
-    data: {
-      user: {
-        id: user.id,
-        fullName,
-        email,
-        phone,
-        role: user.role,
-      },
+  res.status(201).json(formatSuccess({
+    user: {
+      id: user.id,
+      fullName,
+      email,
+      phone,
+      role: user.role,
     },
-    token,
-  });
+    token
+  }));
 });
 
 const login = asyncHandler(async (req, res) => {
@@ -50,29 +49,27 @@ const login = asyncHandler(async (req, res) => {
   });
 
   if (!user) {
-    return res.status(400).json({ message: "Email or password incorrect" });
+    return res.status(400).json(formatError("Email or password incorrect"));
   }
 
   const isValidPassword = await bcrypt.compare(password, user.password);
 
   if (!isValidPassword) {
-    return res.status(400).json({ message: "Email or password incorrect" });
+    return res.status(400).json(formatError("Email or password incorrect"));
   }
 
   const token = generateToken(user.id, res);
 
-  res.status(200).json({
-    data: {
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-      },
+  res.status(200).json(formatSuccess({
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
     },
-    token,
-  });
+    token
+  }));
 });
 
 const logout = asyncHandler(async (req, res) => {
@@ -81,9 +78,7 @@ const logout = asyncHandler(async (req, res) => {
     expires: new Date(0),
   });
 
-  res.status(200).json({
-    message: "Logged out successfully",
-  });
+  res.status(200).json(formatSuccess(null, "Logged out successfully"));
 });
 
 const getMe = asyncHandler(async (req, res) => {
@@ -93,14 +88,10 @@ const getMe = asyncHandler(async (req, res) => {
   });
 
   if (!user) {
-    return res.status(404).json({ message: "User not found" });
+    return res.status(404).json(formatError("User not found"));
   }
 
-  res.status(200).json({
-    data: {
-      user,
-    },
-  });
+  res.status(200).json(formatSuccess({ user }));
 });
 
 export { register, login, logout, getMe };
