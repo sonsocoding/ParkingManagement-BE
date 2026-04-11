@@ -7,6 +7,7 @@ import authRoute from "./routes/authRoutes.js";
 import userRoute from "./routes/userRoutes.js";
 import vehicleRoute from "./routes/vehicleRoutes.js";
 import parkingLotRoute from "./routes/parkingLotRoutes.js";
+import parkingSlotRoute from "./routes/parkingSlotRoutes.js";
 
 // import middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -34,6 +35,7 @@ app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
 app.use("/api/vehicles", vehicleRoute);
 app.use("/api/parking-lots", parkingLotRoute);
+app.use("/api/parking-slots", parkingSlotRoute);
 
 // global error handler
 app.use(errorHandler);
