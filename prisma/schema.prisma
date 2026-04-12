@@ -125,7 +125,7 @@ model Booking {
   parkingSlotId String
   parkingLotId  String
   startTime     DateTime
-  endTime       DateTime?
+  endTime       DateTime
   estimatedCost Decimal       @db.Decimal(10, 2)
   status        BookingStatus @default(PENDING)
 
