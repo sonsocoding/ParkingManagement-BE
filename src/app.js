@@ -9,6 +9,7 @@ import vehicleRoute from "./routes/vehicleRoutes.js";
 import parkingLotRoute from "./routes/parkingLotRoutes.js";
 import parkingSlotRoute from "./routes/parkingSlotRoutes.js";
 import bookingRoute from "./routes/bookingRoutes.js";
+import parkingRecordRoute from "./routes/parkingRecordRoutes.js";
 
 // import middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -38,6 +39,7 @@ app.use("/api/vehicles", vehicleRoute);
 app.use("/api/parking-lots", parkingLotRoute);
 app.use("/api/parking-slots", parkingSlotRoute);
 app.use("/api/bookings", bookingRoute);
+app.use("/api/records", parkingRecordRoute);
 
 // global error handler
 app.use(errorHandler);

@@ -21,11 +21,12 @@ model User {
   role     UserRole @default(USER)
 
   // Relations
-  vehicles      Vehicle[]
-  bookings      Booking[]
-  payments      Payment[]
-  monthlyPasses MonthlyPass[]
-  adminLogs     AdminLog[]    @relation("AdminLogs")
+  vehicles       Vehicle[]
+  bookings       Booking[]
+  payments       Payment[]
+  monthlyPasses  MonthlyPass[]
+  parkingRecords ParkingRecord[]
+  adminLogs      AdminLog[]      @relation("AdminLogs")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -127,7 +128,7 @@ model Booking {
   startTime     DateTime
   endTime       DateTime
   estimatedCost Decimal       @db.Decimal(10, 2)
-  status        BookingStatus @default(PENDING)
+  status        BookingStatus @default(CONFIRMED)
 
   // Relations
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -148,7 +149,6 @@ model Booking {
 }
 
 enum BookingStatus {
-  PENDING // waiting for confirmation
   CONFIRMED // slot is reserved
   COMPLETED // parking finished
   CANCELLED // cancelled by user
@@ -156,17 +156,20 @@ enum BookingStatus {
 
 // ParkingRecord model - actual vehicle entry/exit logs
 model ParkingRecord {
-  id            String        @id @default(cuid())
+  id            String              @id @default(cuid())
+  userId        String
   vehicleId     String
   parkingLotId  String
   parkingSlotId String
   bookingId     String?
-  checkIn       DateTime
-  checkOut      DateTime?
-  actualCost    Decimal       @default(0) @db.Decimal(10, 2)
-  paymentStatus PaymentStatus @default(PENDING)
+  checkInTime   DateTime
+  checkOutTime  DateTime?
+  actualCost    Decimal             @default(0) @db.Decimal(10, 2)
+  paymentStatus PaymentStatus       @default(PENDING)
+  status        ParkingRecordStatus @default(CHECKED_IN)
 
   // Relations
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   vehicle     Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   parkingLot  ParkingLot  @relation(fields: [parkingLotId], references: [id], onDelete: Cascade)
   parkingSlot ParkingSlot @relation(fields: [parkingSlotId], references: [id], onDelete: Cascade)
@@ -175,9 +178,15 @@ model ParkingRecord {
   updatedAt DateTime  @updatedAt
   bookings  Booking[]
 
+  @@index([userId])
   @@index([vehicleId])
   @@index([parkingLotId])
-  @@index([checkIn])
+  @@index([checkInTime])
+}
+
+enum ParkingRecordStatus {
+  CHECKED_IN
+  CHECKED_OUT
 }
 
 // Payment model - payment transactions

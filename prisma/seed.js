@@ -87,12 +87,8 @@ async function main() {
       carHourlyRate: 40000,
       motorbikeHourlyRate: 5000,
       zones: {
-        carZones: [
-          { zoneId: "E", name: "Khu E", slotCount: 50 },
-        ],
-        motoZones: [
-          { zoneId: "F", name: "Khu F", slotCount: 100 },
-        ],
+        carZones: [{ zoneId: "E", name: "Khu E", slotCount: 50 }],
+        motoZones: [{ zoneId: "F", name: "Khu F", slotCount: 100 }],
       },
     },
   });
@@ -204,25 +200,37 @@ async function main() {
     data: {
       userId: user.id,
       vehicleId: vehicle2.id,
-      parkingSlotId: slots[6].id,
+      parkingSlotId: slots[8].id,
       parkingLotId: parkingLot.id,
       startTime: new Date(now.getTime() + 1 * 60 * 60 * 1000),
       endTime: new Date(now.getTime() + 4 * 60 * 60 * 1000),
       estimatedCost: 150000,
-      status: "PENDING",
+      status: "CONFIRMED",
     },
   });
   console.log("✅ Created booking 2:", booking2.id);
 
   // ===== CREATE PARKING RECORDS =====
+  // Update slot statuses based on bookings
+  await prisma.parkingSlot.update({
+    where: { id: slots[0].id },
+    data: { status: "OCCUPIED" },
+  });
+
+  await prisma.parkingSlot.update({
+    where: { id: slots[8].id },
+    data: { status: "RESERVED" },
+  });
+
   const record1 = await prisma.parkingRecord.create({
     data: {
+      userId: user.id,
       vehicleId: vehicle1.id,
       parkingLotId: parkingLot.id,
       parkingSlotId: slots[0].id,
       bookingId: booking1.id,
-      checkIn: new Date(now.getTime() - 1 * 60 * 60 * 1000), // checked in 1 hour ago
-      checkOut: null,
+      checkInTime: new Date(now.getTime() - 1 * 60 * 60 * 1000), // checked in 1 hour ago
+      checkOutTime: null,
       actualCost: 50000,
       paymentStatus: "PENDING",
     },

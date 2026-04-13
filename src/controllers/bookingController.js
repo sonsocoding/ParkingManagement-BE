@@ -2,9 +2,7 @@ import { prisma } from "../config/db.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatSuccess, formatError } from "../utils/formatResponse.js";
 
-// Valid status transitions: currentStatus -> [allowed next statuses]
 const VALID_TRANSITIONS = {
-  PENDING: ["CONFIRMED", "CANCELLED"],
   CONFIRMED: ["COMPLETED", "CANCELLED"],
   COMPLETED: [], // terminal state
   CANCELLED: [], // terminal state
@@ -82,7 +80,7 @@ const createBooking = asyncHandler(async (req, res) => {
         startTime,
         endTime,
         estimatedCost,
-        status: "PENDING",
+        status: "CONFIRMED",
       },
     }),
 
@@ -325,8 +323,8 @@ const cancelOwnBooking = asyncHandler(async (req, res) => {
     return res.status(403).json(formatError("You are not authorized to cancel this booking"));
   }
 
-  // Only allow cancellation of PENDING or CONFIRMED bookings
-  if (existingBooking.status !== "PENDING" && existingBooking.status !== "CONFIRMED") {
+  // Only allow cancellation of CONFIRMED bookings
+  if (existingBooking.status !== "CONFIRMED") {
     return res
       .status(400)
       .json(formatError(`Cannot cancel a booking with status ${existingBooking.status}`));
