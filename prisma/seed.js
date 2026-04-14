@@ -165,7 +165,7 @@ async function main() {
       userId: user.id,
       plateNumber: "30A-12345",
       vehicleType: "CAR",
-      color: "Đen",
+      color: "Black",
     },
   });
   console.log("✅ Created vehicle 1:", vehicle1.plateNumber);
@@ -175,7 +175,7 @@ async function main() {
       userId: user.id,
       plateNumber: "30B-98765",
       vehicleType: "MOTORBIKE",
-      color: "Xanh",
+      color: "Blue",
     },
   });
   console.log("✅ Created vehicle 2:", vehicle2.plateNumber);
