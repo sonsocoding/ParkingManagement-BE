@@ -128,7 +128,7 @@ model Booking {
   startTime     DateTime
   endTime       DateTime
   estimatedCost Decimal       @db.Decimal(10, 2)
-  status        BookingStatus @default(CONFIRMED)
+  status        BookingStatus @default(PENDING_PAYMENT)
 
   // Relations
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -149,6 +149,7 @@ model Booking {
 }
 
 enum BookingStatus {
+  PENDING_PAYMENT // waiting for payment
   CONFIRMED // slot is reserved
   COMPLETED // parking finished
   CANCELLED // cancelled by user

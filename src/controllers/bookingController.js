@@ -3,6 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatSuccess, formatError } from "../utils/formatResponse.js";
 
 const VALID_TRANSITIONS = {
+  PENDING_PAYMENT: ["CONFIRMED", "CANCELLED"],
   CONFIRMED: ["COMPLETED", "CANCELLED"],
   COMPLETED: [], // terminal state
   CANCELLED: [], // terminal state
@@ -22,7 +23,7 @@ const calculateNewCost = async (startTime, endTime, existingBooking) => {
 };
 
 const createBooking = asyncHandler(async (req, res) => {
-  const { vehicleId, parkingSlotId, parkingLotId, startTime, endTime } = req.body;
+  const { vehicleId, parkingSlotId, parkingLotId, startTime, endTime, paymentMethod } = req.body;
   const userId = req.user.id;
 
   // check if parking slot is available
@@ -64,14 +65,17 @@ const createBooking = asyncHandler(async (req, res) => {
     return res.status(403).json(formatError("This is not your vehicle"));
   }
 
+  // calculate estimate cost
   const hours = (new Date(endTime) - new Date(startTime)) / (1000 * 60 * 60);
   const estimatedCost =
     (vehicle.vehicleType === "CAR" ? parkingLot.carHourlyRate : parkingLot.motorbikeHourlyRate) *
     hours;
 
-  // make booking and update slot status sync
-  const [booking, updatedSlot] = await prisma.$transaction([
-    prisma.booking.create({
+  // -- handle payment -- //
+  // if pay with cash, confirm booking immediately and reserve slot
+  if (paymentMethod === "CASH") {
+    // make booking and update slot status sync
+    const booking = awaitprisma.booking.create({
       data: {
         userId,
         vehicleId,
@@ -82,16 +86,37 @@ const createBooking = asyncHandler(async (req, res) => {
         estimatedCost,
         status: "CONFIRMED",
       },
-    }),
+    });
 
     // change slot status to reserved
-    prisma.parkingSlot.update({
+    const updatedSlot = await prisma.parkingSlot.update({
       where: { id: parkingSlotId },
       data: {
         status: "RESERVED",
       },
-    }),
-  ]);
+    });
+  }
+  // if pay online, booking status = PENDING_PAYMENT -> send payment url to FE -> redirect user to payment gateway -> once done, gateway call WebHook -> update BE
+  else {
+    const booking = awaitprisma.booking.create({
+      data: {
+        userId,
+        vehicleId,
+        parkingSlotId,
+        parkingLotId,
+        startTime,
+        endTime,
+        estimatedCost,
+        status: "PENDING_PAYMENT",
+      },
+    });
+    const updatedSlot = await prisma.parkingSlot.update({
+      where: { id: parkingSlotId },
+      data: {
+        status: "RESERVED",
+      },
+    });
+  }
 
   return res.status(201).json(formatSuccess({ booking, updatedSlot }));
 });
