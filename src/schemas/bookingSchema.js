@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-const bookingStatusEnum = z.enum(["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"]);
+const bookingStatusEnum = z.enum(["PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"]);
+const paymentMethodEnum = z.enum(["CASH", "VNPAY"]);
 
 export const createBookingSchema = z.object({
   body: z
@@ -10,6 +11,7 @@ export const createBookingSchema = z.object({
       parkingSlotId: z.string().min(1, "Parking Slot ID is required"),
       startTime: z.iso.datetime("Start time must be a valid ISO DateTime string"),
       endTime: z.iso.datetime("End time must be a valid ISO DateTime string"),
+      paymentMethod: paymentMethodEnum.default("CASH"),
     })
     .refine((data) => new Date(data.startTime) > new Date(), {
       message: "Start time must be in the future",

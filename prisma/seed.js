@@ -243,9 +243,8 @@ async function main() {
       userId: user.id,
       bookingId: booking1.id,
       amount: 100000,
-      method: "VNPAY",
-      status: "SUCCESS",
-      referenceId: "VNP20250401001",
+      method: "CASH",
+      status: "PENDING",
     },
   });
   console.log("✅ Created payment 1:", payment1.referenceId);
@@ -255,9 +254,8 @@ async function main() {
       userId: user.id,
       bookingId: booking2.id,
       amount: 150000,
-      method: "MOMO",
+      method: "CASH",
       status: "PENDING",
-      referenceId: "MOMO20250401001",
     },
   });
   console.log("✅ Created payment 2:", payment2.referenceId);

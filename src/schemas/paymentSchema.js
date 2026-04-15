@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const paymentMethodEnum = z.enum(["CASH", "CARD", "MOMO", "VNPAY"]);
+const paymentMethodEnum = z.enum(["CASH", "VNPAY"]);
 const paymentStatusEnum = z.enum(["PENDING", "SUCCESS", "FAILED", "REFUNDED"]);
 
 // Schema for POST /api/payments

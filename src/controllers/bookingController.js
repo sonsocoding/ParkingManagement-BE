@@ -71,54 +71,61 @@ const createBooking = asyncHandler(async (req, res) => {
     (vehicle.vehicleType === "CAR" ? parkingLot.carHourlyRate : parkingLot.motorbikeHourlyRate) *
     hours;
 
+  const normalizedPaymentMethod = paymentMethod ?? "CASH";
+
+  if (normalizedPaymentMethod === "VNPAY") {
+    return res
+      .status(400)
+      .json(formatError("VNPay booking flow is temporarily disabled for API stabilization"));
+  }
+
+  if (normalizedPaymentMethod !== "CASH") {
+    return res.status(400).json(formatError("Only CASH payment method is supported right now"));
+  }
+
   // -- handle payment -- //
   // if pay with cash, confirm booking immediately and reserve slot
-  if (paymentMethod === "CASH") {
-    // make booking and update slot status sync
-    const booking = awaitprisma.booking.create({
-      data: {
-        userId,
-        vehicleId,
-        parkingSlotId,
-        parkingLotId,
-        startTime,
-        endTime,
-        estimatedCost,
-        status: "CONFIRMED",
-      },
+  if (normalizedPaymentMethod === "CASH") {
+    const [booking, updatedSlot, payment] = await prisma.$transaction([
+      // create booking with CONFIRMED status
+      prisma.booking.create({
+        data: {
+          userId,
+          vehicleId,
+          parkingSlotId,
+          parkingLotId,
+          startTime,
+          endTime,
+          estimatedCost,
+          status: "CONFIRMED",
+        },
+      }),
+      // change slot status to reserved
+      prisma.parkingSlot.update({
+        where: { id: parkingSlotId },
+        data: {
+          status: "RESERVED",
+        },
+      }),
+      // create payment
+      prisma.payment.create({
+        data: {
+          userId,
+          amount: estimatedCost,
+          method: "CASH",
+          status: "PENDING",
+        },
+      }),
+    ]);
+
+    // manually link payment to booking
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { bookingId: booking.id },
     });
 
-    // change slot status to reserved
-    const updatedSlot = await prisma.parkingSlot.update({
-      where: { id: parkingSlotId },
-      data: {
-        status: "RESERVED",
-      },
-    });
+    return res.status(201).json(formatSuccess({ booking, updatedSlot, payment }));
   }
-  // if pay online, booking status = PENDING_PAYMENT -> send payment url to FE -> redirect user to payment gateway -> once done, gateway call WebHook -> update BE
-  else {
-    const booking = awaitprisma.booking.create({
-      data: {
-        userId,
-        vehicleId,
-        parkingSlotId,
-        parkingLotId,
-        startTime,
-        endTime,
-        estimatedCost,
-        status: "PENDING_PAYMENT",
-      },
-    });
-    const updatedSlot = await prisma.parkingSlot.update({
-      where: { id: parkingSlotId },
-      data: {
-        status: "RESERVED",
-      },
-    });
-  }
-
-  return res.status(201).json(formatSuccess({ booking, updatedSlot }));
 });
 
 const getOwnBooking = asyncHandler(async (req, res) => {
@@ -286,12 +293,13 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
     operations.push(
       prisma.parkingRecord.create({
         data: {
+          userId: existingBooking.userId,
           bookingId: existingBooking.id,
           parkingLotId: existingBooking.parkingLotId,
           parkingSlotId: existingBooking.parkingSlotId,
           vehicleId: existingBooking.vehicleId,
-          checkIn,
-          checkOut,
+          checkInTime: checkIn,
+          checkOutTime: checkOut,
           actualCost,
           paymentStatus: "PENDING",
         },

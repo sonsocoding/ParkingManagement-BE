@@ -178,6 +178,7 @@ model ParkingRecord {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   bookings  Booking[]
+  payment   Payment?
 
   @@index([userId])
   @@index([vehicleId])
@@ -192,19 +193,21 @@ enum ParkingRecordStatus {
 
 // Payment model - payment transactions
 model Payment {
-  id            String        @id @default(cuid())
-  userId        String
-  bookingId     String?       @unique
-  monthlyPassId String?       @unique
-  amount        Decimal       @db.Decimal(10, 2)
-  method        PaymentMethod
-  status        PaymentStatus @default(PENDING)
-  referenceId   String? // transaction ID from payment gateway
+  id              String        @id @default(cuid())
+  userId          String
+  bookingId       String?       @unique
+  monthlyPassId   String?       @unique
+  parkingRecordId String?       @unique
+  amount          Decimal       @db.Decimal(10, 2)
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  referenceId     String? // transaction ID from payment gateway
 
   // Relations
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  booking     Booking?     @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  monthlyPass MonthlyPass? @relation(fields: [monthlyPassId], references: [id], onDelete: SetNull)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking       Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  monthlyPass   MonthlyPass?   @relation(fields: [monthlyPassId], references: [id], onDelete: SetNull)
+  parkingRecord ParkingRecord? @relation(fields: [parkingRecordId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -215,8 +218,6 @@ model Payment {
 
 enum PaymentMethod {
   CASH
-  CARD
-  MOMO
   VNPAY
 }
 

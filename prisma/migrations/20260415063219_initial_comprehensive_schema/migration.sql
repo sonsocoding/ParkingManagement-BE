@@ -5,10 +5,16 @@ CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'MANAGER', 'USER');
 CREATE TYPE "VehicleType" AS ENUM ('CAR', 'MOTORBIKE');
 
 -- CreateEnum
+CREATE TYPE "LotType" AS ENUM ('CAR_ONLY', 'MOTORBIKE_ONLY', 'BOTH');
+
+-- CreateEnum
 CREATE TYPE "SlotStatus" AS ENUM ('AVAILABLE', 'OCCUPIED', 'RESERVED', 'MAINTENANCE');
 
 -- CreateEnum
-CREATE TYPE "BookingStatus" AS ENUM ('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED');
+CREATE TYPE "BookingStatus" AS ENUM ('PENDING_PAYMENT', 'CONFIRMED', 'COMPLETED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "ParkingRecordStatus" AS ENUM ('CHECKED_IN', 'CHECKED_OUT');
 
 -- CreateEnum
 CREATE TYPE "PaymentMethod" AS ENUM ('CASH', 'CARD', 'MOMO', 'VNPAY');
@@ -25,7 +31,7 @@ CREATE TABLE "User" (
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "phone" TEXT,
-    "fullName" TEXT,
+    "fullName" TEXT NOT NULL,
     "role" "UserRole" NOT NULL DEFAULT 'USER',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -52,8 +58,10 @@ CREATE TABLE "ParkingLot" (
     "name" TEXT NOT NULL,
     "address" TEXT NOT NULL,
     "totalSlots" INTEGER NOT NULL,
+    "lotType" "LotType" NOT NULL DEFAULT 'BOTH',
     "zones" JSONB,
-    "hourlyRate" DECIMAL(10,2) NOT NULL,
+    "carHourlyRate" DECIMAL(10,2),
+    "motorbikeHourlyRate" DECIMAL(10,2),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -82,9 +90,9 @@ CREATE TABLE "Booking" (
     "parkingSlotId" TEXT NOT NULL,
     "parkingLotId" TEXT NOT NULL,
     "startTime" TIMESTAMP(3) NOT NULL,
-    "endTime" TIMESTAMP(3),
+    "endTime" TIMESTAMP(3) NOT NULL,
     "estimatedCost" DECIMAL(10,2) NOT NULL,
-    "status" "BookingStatus" NOT NULL DEFAULT 'PENDING',
+    "status" "BookingStatus" NOT NULL DEFAULT 'PENDING_PAYMENT',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "parkingRecordId" TEXT,
@@ -95,14 +103,16 @@ CREATE TABLE "Booking" (
 -- CreateTable
 CREATE TABLE "ParkingRecord" (
     "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
     "vehicleId" TEXT NOT NULL,
     "parkingLotId" TEXT NOT NULL,
     "parkingSlotId" TEXT NOT NULL,
     "bookingId" TEXT,
-    "checkIn" TIMESTAMP(3) NOT NULL,
-    "checkOut" TIMESTAMP(3),
+    "checkInTime" TIMESTAMP(3) NOT NULL,
+    "checkOutTime" TIMESTAMP(3),
     "actualCost" DECIMAL(10,2) NOT NULL DEFAULT 0,
     "paymentStatus" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
+    "status" "ParkingRecordStatus" NOT NULL DEFAULT 'CHECKED_IN',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -186,13 +196,16 @@ CREATE INDEX "Booking_parkingSlotId_idx" ON "Booking"("parkingSlotId");
 CREATE INDEX "Booking_status_idx" ON "Booking"("status");
 
 -- CreateIndex
+CREATE INDEX "ParkingRecord_userId_idx" ON "ParkingRecord"("userId");
+
+-- CreateIndex
 CREATE INDEX "ParkingRecord_vehicleId_idx" ON "ParkingRecord"("vehicleId");
 
 -- CreateIndex
 CREATE INDEX "ParkingRecord_parkingLotId_idx" ON "ParkingRecord"("parkingLotId");
 
 -- CreateIndex
-CREATE INDEX "ParkingRecord_checkIn_idx" ON "ParkingRecord"("checkIn");
+CREATE INDEX "ParkingRecord_checkInTime_idx" ON "ParkingRecord"("checkInTime");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Payment_bookingId_key" ON "Payment"("bookingId");
@@ -241,6 +254,9 @@ ALTER TABLE "Booking" ADD CONSTRAINT "Booking_parkingLotId_fkey" FOREIGN KEY ("p
 
 -- AddForeignKey
 ALTER TABLE "Booking" ADD CONSTRAINT "Booking_parkingRecordId_fkey" FOREIGN KEY ("parkingRecordId") REFERENCES "ParkingRecord"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ParkingRecord" ADD CONSTRAINT "ParkingRecord_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ParkingRecord" ADD CONSTRAINT "ParkingRecord_vehicleId_fkey" FOREIGN KEY ("vehicleId") REFERENCES "Vehicle"("id") ON DELETE CASCADE ON UPDATE CASCADE;

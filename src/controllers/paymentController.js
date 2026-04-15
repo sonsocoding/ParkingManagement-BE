@@ -11,9 +11,9 @@ const VALID_TRANSITIONS = {
 
 const createPayment = asyncHandler(async (req, res) => {
   const { bookingId, monthlyPassId, amount, method, referenceId } = req.body;
-  const userId = req.user.id;
+  let targetUserId = null;
 
-  // check if booking belong to user
+  // Validate booking relation and derive owner for admin-created payment.
   if (bookingId) {
     const booking = await prisma.booking.findUnique({
       where: {
@@ -23,12 +23,10 @@ const createPayment = asyncHandler(async (req, res) => {
     if (!booking) {
       return res.status(404).json(formatError("Booking not found"));
     }
-    if (booking.userId !== userId) {
-      return res.status(403).json(formatError("Booking does not belong to user"));
-    }
+    targetUserId = booking.userId;
   }
 
-  // check if monthlypass belong to user
+  // Validate monthly pass relation and derive owner for admin-created payment.
   if (monthlyPassId) {
     const monthlyPass = await prisma.monthlyPass.findUnique({
       where: {
@@ -38,13 +36,15 @@ const createPayment = asyncHandler(async (req, res) => {
     if (!monthlyPass) {
       return res.status(404).json(formatError("Monthly pass not found"));
     }
-    if (monthlyPass.userId !== userId) {
-      return res.status(403).json(formatError("Monthly pass does not belong to user"));
+    if (targetUserId && targetUserId !== monthlyPass.userId) {
+      return res.status(400).json(formatError("Booking and monthly pass must belong to the same user"));
     }
+    targetUserId = monthlyPass.userId;
   }
+
   const payment = await prisma.payment.create({
     data: {
-      userId,
+      userId: targetUserId,
       bookingId,
       monthlyPassId,
       amount,
@@ -123,6 +123,70 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
   res.status(200).json(formatSuccess(payment, "Payment updated successfully"));
 });
 
+const handleVnpayIpn = asyncHandler(async (req, res) => {
+  // In a real VNPAY integration, you would verify the secure hash here
+  // const secureHash = req.query.vnp_SecureHash;
+  // const calculatedHash = vnpayService.verifyIpnCall(req.query);
+
+  const txnRef = req.query.vnp_TxnRef; // This is our booking ID
+  const responseCode = req.query.vnp_ResponseCode;
+
+  const booking = await prisma.booking.findUnique({
+    where: { id: txnRef },
+    include: { payment: true }, // Assumes 1-to-1 relation, which we manually mock
+  });
+
+  if (!booking) {
+    return res.status(404).json({ RspCode: "01", Message: "Order not found" });
+  }
+
+  // Find the payment associated with the booking manually
+  const payment = await prisma.payment.findFirst({
+    where: { bookingId: booking.id, method: "VNPAY" },
+  });
+
+  if (!payment) {
+    return res.status(404).json({ RspCode: "01", Message: "Payment not found" });
+  }
+
+  if (payment.status === "SUCCESS") {
+    return res.status(200).json({ RspCode: "02", Message: "Order already confirmed" });
+  }
+
+  if (responseCode === "00") {
+    // Payment success
+    await prisma.$transaction([
+      prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: "SUCCESS" },
+      }),
+      prisma.booking.update({
+        where: { id: booking.id },
+        data: { status: "CONFIRMED" },
+      }),
+    ]);
+  } else {
+    // Payment failed
+    await prisma.$transaction([
+      prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: "FAILED" },
+      }),
+      prisma.booking.update({
+        where: { id: booking.id },
+        data: { status: "CANCELLED" },
+      }),
+      // Free the slot
+      prisma.parkingSlot.update({
+        where: { id: booking.parkingSlotId },
+        data: { status: "AVAILABLE" },
+      }),
+    ]);
+  }
+
+  return res.status(200).json({ RspCode: "00", Message: "Confirm Success" });
+});
+
 export {
   createPayment,
   getOwnPayment,
@@ -130,4 +194,5 @@ export {
   getPaymentByUserId,
   getPaymentById,
   updatePaymentStatus,
+  handleVnpayIpn,
 };

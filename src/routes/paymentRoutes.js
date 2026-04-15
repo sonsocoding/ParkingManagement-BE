@@ -9,10 +9,15 @@ import {
   getPaymentByUserId,
   getPaymentById,
   updatePaymentStatus,
+  handleVnpayIpn,
 } from "../controllers/paymentController.js";
 import { createPaymentSchema, updatePaymentStatusSchema } from "../schemas/paymentSchema.js";
 
 const router = express.Router();
+
+// Webhooks from payment gateways MUST be public (do not require JWT)
+router.get("/vnpay-ipn", handleVnpayIpn); // VNPAY often uses GET for IPN but depends on config, sometimes POST. Let's accept both or just GET as per IPN standard GET query string.
+
 router.use(authenticate);
 
 router.get("/me", authorize("USER"), getOwnPayment);
