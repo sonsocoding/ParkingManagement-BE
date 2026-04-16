@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Starting database seed...\n");
 
-  // Clean previous data
+  // Clean previous data (dependency order: children first)
   await prisma.adminLog.deleteMany({});
   await prisma.payment.deleteMany({});
   await prisma.monthlyPass.deleteMany({});
@@ -17,15 +17,17 @@ async function main() {
   await prisma.parkingLot.deleteMany({});
   await prisma.user.deleteMany({});
 
-  // ===== CREATE USERS =====
-  const hashedPasswordAdmin = await bcrypt.hash("admin123", 10);
-  const hashedPasswordManager = await bcrypt.hash("manager123", 10);
-  const hashedPasswordUser = await bcrypt.hash("user123", 10);
+  // ===== CREATE USERS (1 of each role) =====
+  const [hashedAdmin, hashedManager, hashedUser] = await Promise.all([
+    bcrypt.hash("admin123", 10),
+    bcrypt.hash("manager123", 10),
+    bcrypt.hash("user123", 10),
+  ]);
 
   const admin = await prisma.user.create({
     data: {
       email: "admin@parking.com",
-      password: hashedPasswordAdmin,
+      password: hashedAdmin,
       phone: "0901234567",
       fullName: "Nguyễn Văn Admin",
       role: "ADMIN",
@@ -36,7 +38,7 @@ async function main() {
   const manager = await prisma.user.create({
     data: {
       email: "manager@parking.com",
-      password: hashedPasswordManager,
+      password: hashedManager,
       phone: "0902234567",
       fullName: "Trần Thị Manager",
       role: "MANAGER",
@@ -47,7 +49,7 @@ async function main() {
   const user = await prisma.user.create({
     data: {
       email: "user@parking.com",
-      password: hashedPasswordUser,
+      password: hashedUser,
       phone: "0903234567",
       fullName: "Lê Văn User",
       role: "USER",
@@ -61,6 +63,7 @@ async function main() {
       name: "Bãi Đỗ Tây Hồ",
       address: "Số 123, Đường Tây Hồ, Quận Tây Hồ, Hà Nội",
       totalSlots: 100,
+      lotType: "BOTH",
       carHourlyRate: 50000, // 50,000 VND/hour
       motorbikeHourlyRate: 10000, // 10,000 VND/hour
       zones: {
@@ -143,7 +146,7 @@ async function main() {
     slots.push(slot);
   }
 
-  // MOTORBIKE slots in Zone C (2 slots)
+  // Motorbike slots in Zone C (2 slots)
   for (let i = 1; i <= 2; i++) {
     const slot = await prisma.parkingSlot.create({
       data: {
@@ -157,7 +160,7 @@ async function main() {
     slots.push(slot);
   }
 
-  console.log(`✅ Created ${slots.length} parking slots\n`);
+  console.log(`✅ Created ${slots.length} parking slots`);
 
   // ===== CREATE VEHICLES =====
   const vehicle1 = await prisma.vehicle.create({
@@ -180,64 +183,31 @@ async function main() {
   });
   console.log("✅ Created vehicle 2:", vehicle2.plateNumber);
 
-  // ===== CREATE BOOKINGS =====
+  // ===== CREATE BOOKINGS & PAYMENTS =====
+  // Booking 1: CONFIRMED + paid (slot is RESERVED, will be checked in)
   const now = new Date();
+
   const booking1 = await prisma.booking.create({
     data: {
       userId: user.id,
       vehicleId: vehicle1.id,
-      parkingSlotId: slots[0].id,
+      parkingSlotId: slots[0].id, // A-1
       parkingLotId: parkingLot.id,
       startTime: now,
-      endTime: new Date(now.getTime() + 2 * 60 * 60 * 1000), // 2 hours
-      estimatedCost: 100000, // 100,000 VND
+      endTime: new Date(now.getTime() + 2 * 60 * 60 * 1000), // +2 hours
+      estimatedCost: 100000,
       status: "CONFIRMED",
     },
   });
-  console.log("✅ Created booking 1:", booking1.id);
+  console.log("✅ Created booking 1 (CONFIRMED):", booking1.id);
 
-  const booking2 = await prisma.booking.create({
-    data: {
-      userId: user.id,
-      vehicleId: vehicle2.id,
-      parkingSlotId: slots[8].id,
-      parkingLotId: parkingLot.id,
-      startTime: new Date(now.getTime() + 1 * 60 * 60 * 1000),
-      endTime: new Date(now.getTime() + 4 * 60 * 60 * 1000),
-      estimatedCost: 150000,
-      status: "CONFIRMED",
-    },
-  });
-  console.log("✅ Created booking 2:", booking2.id);
-
-  // ===== CREATE PARKING RECORDS =====
-  // Update slot statuses based on bookings
+  // Mark slot A-1 as RESERVED (it's a confirmed booking)
   await prisma.parkingSlot.update({
     where: { id: slots[0].id },
-    data: { status: "OCCUPIED" },
-  });
-
-  await prisma.parkingSlot.update({
-    where: { id: slots[8].id },
     data: { status: "RESERVED" },
   });
 
-  const record1 = await prisma.parkingRecord.create({
-    data: {
-      userId: user.id,
-      vehicleId: vehicle1.id,
-      parkingLotId: parkingLot.id,
-      parkingSlotId: slots[0].id,
-      bookingId: booking1.id,
-      checkInTime: new Date(now.getTime() - 1 * 60 * 60 * 1000), // checked in 1 hour ago
-      checkOutTime: null,
-      actualCost: 50000,
-      paymentStatus: "PENDING",
-    },
-  });
-  console.log("✅ Created parking record 1:", record1.id);
-
-  // ===== CREATE PAYMENTS =====
+  // Payment for booking1 — PENDING (will become SUCCESS at checkout)
   const payment1 = await prisma.payment.create({
     data: {
       userId: user.id,
@@ -247,18 +217,57 @@ async function main() {
       status: "PENDING",
     },
   });
-  console.log("✅ Created payment 1:", payment1.referenceId);
+  console.log("✅ Created payment 1 (linked to booking1):", payment1.id);
 
+  // ParkingRecord for booking1 — vehicle has checked in
+  const record1 = await prisma.parkingRecord.create({
+    data: {
+      userId: user.id,
+      vehicleId: vehicle1.id,
+      parkingLotId: parkingLot.id,
+      parkingSlotId: slots[0].id,
+      bookingId: booking1.id,
+      checkInTime: new Date(now.getTime() - 30 * 60 * 1000), // checked in 30 min ago
+      checkOutTime: null,
+      actualCost: 0,
+      paymentStatus: "PENDING",
+      status: "CHECKED_IN",
+    },
+  });
+
+  // Update slot A-1 to OCCUPIED (vehicle has physically arrived)
+  await prisma.parkingSlot.update({
+    where: { id: slots[0].id },
+    data: { status: "OCCUPIED" },
+  });
+  console.log("✅ Created parking record 1 (CHECKED_IN):", record1.id);
+
+  // Booking 2: PENDING_PAYMENT — slot is still AVAILABLE until payment confirmed
+  const booking2 = await prisma.booking.create({
+    data: {
+      userId: user.id,
+      vehicleId: vehicle2.id,
+      parkingSlotId: slots[8].id, // C-1
+      parkingLotId: parkingLot.id,
+      startTime: new Date(now.getTime() + 1 * 60 * 60 * 1000), // starts in 1 hour
+      endTime: new Date(now.getTime() + 4 * 60 * 60 * 1000), // +4 hours
+      estimatedCost: 30000, // 3 hours × 10,000 VND
+      status: "PENDING_PAYMENT",
+    },
+  });
+  console.log("✅ Created booking 2 (PENDING_PAYMENT):", booking2.id);
+
+  // Payment for booking2 — also PENDING (awaiting user payment action)
   const payment2 = await prisma.payment.create({
     data: {
       userId: user.id,
       bookingId: booking2.id,
-      amount: 150000,
+      amount: 30000,
       method: "CASH",
       status: "PENDING",
     },
   });
-  console.log("✅ Created payment 2:", payment2.referenceId);
+  console.log("✅ Created payment 2 (linked to booking2):", payment2.id);
 
   // ===== CREATE MONTHLY PASS =====
   const monthlyPass = await prisma.monthlyPass.create({
@@ -266,8 +275,8 @@ async function main() {
       userId: user.id,
       parkingLotId: parkingLot.id,
       vehicleType: "CAR",
-      startDate: new Date("2025-04-01"),
-      endDate: new Date("2025-05-01"),
+      startDate: new Date("2026-04-01"),
+      endDate: new Date("2026-05-01"),
       price: 1500000, // 1,500,000 VND/month
       status: "ACTIVE",
     },
@@ -298,12 +307,12 @@ async function main() {
   // ===== DISPLAY SUMMARY =====
   console.log("📊 Summary:");
   console.log(`   - Users: 3 (Admin, Manager, User)`);
-  console.log(`   - Parking Lot: 3`);
+  console.log(`   - Parking Lot: 1`);
   console.log(`   - Parking Slots: ${slots.length}`);
   console.log(`   - Vehicles: 2`);
-  console.log(`   - Bookings: 2`);
-  console.log(`   - Parking Records: 1`);
-  console.log(`   - Payments: 2`);
+  console.log(`   - Bookings: 2 (1 CONFIRMED + checked-in, 1 PENDING_PAYMENT)`);
+  console.log(`   - Parking Records: 1 (CHECKED_IN)`);
+  console.log(`   - Payments: 2 (both PENDING, linked to their booking)`);
   console.log(`   - Monthly Passes: 1`);
   console.log(`   - Admin Logs: 1\n`);
 

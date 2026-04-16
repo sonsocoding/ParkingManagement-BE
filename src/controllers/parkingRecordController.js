@@ -6,7 +6,7 @@ const checkIn = asyncHandler(async (req, res) => {
   const { vehicleId, parkingSlotId, parkingLotId, bookingId } = req.body;
   const userId = req.user.id;
 
-  // check if parking slot is available
+  // check if parking slot exists
   const parkingSlot = await prisma.parkingSlot.findUnique({
     where: { id: parkingSlotId },
   });
@@ -15,8 +15,14 @@ const checkIn = asyncHandler(async (req, res) => {
     return res.status(404).json(formatError("Parking slot not found"));
   }
 
-  if (parkingSlot.status !== "AVAILABLE") {
+  // Slot must be AVAILABLE for walk-ins, or RESERVED for pre-booked check-ins
+  // (bookingId presence is what distinguishes these two paths)
+  const isWalkIn = !req.body.bookingId;
+  if (isWalkIn && parkingSlot.status !== "AVAILABLE") {
     return res.status(400).json(formatError("Parking slot is not available"));
+  }
+  if (!isWalkIn && parkingSlot.status !== "RESERVED" && parkingSlot.status !== "AVAILABLE") {
+    return res.status(400).json(formatError("Parking slot is not available for check-in"));
   }
 
   // find parking lot, check if it matches with slot
@@ -83,8 +89,9 @@ const checkIn = asyncHandler(async (req, res) => {
       return res.status(403).json(formatError("This is not your booking"));
     }
 
-    if (booking.status === "COMPLETED" || booking.status === "CANCELLED") {
-      return res.status(400).json(formatError("Booking is no longer valid"));
+    // Only a CONFIRMED booking (slot reserved + payment settled) can be checked into
+    if (booking.status !== "CONFIRMED") {
+      return res.status(400).json(formatError(`Booking status is '${booking.status}'. Only CONFIRMED bookings can be checked in.`));
     }
 
     // [FLEXIBLE APPROACH] If they parked in a different slot, track the original slot to free it
@@ -139,7 +146,7 @@ const checkIn = asyncHandler(async (req, res) => {
 
   return res
     .status(201)
-    .json(formatSuccess("Check-in successful", { parkingRecord, updatedSlot }));
+    .json(formatSuccess({ parkingRecord, updatedSlot }, "Check-in successful"));
 });
 
 const checkOut = asyncHandler(async (req, res) => {
@@ -236,15 +243,16 @@ const checkOut = asyncHandler(async (req, res) => {
         });
 
         if (existingBookingPayment) {
+          // Update amount only — preserve the original payment method (CASH/VNPAY/etc.)
           updatedPayment = await tx.payment.update({
             where: { id: existingBookingPayment.id },
             data: {
               amount: actualCost,
-              method: "CASH",
               status: "SUCCESS",
             },
           });
         } else {
+          // Fallback: booking had no pre-created payment (edge case)
           updatedPayment = await tx.payment.create({
             data: {
               userId,
@@ -262,15 +270,16 @@ const checkOut = asyncHandler(async (req, res) => {
         });
 
         if (existingRecordPayment) {
+          // Update amount only — preserve the original payment method
           updatedPayment = await tx.payment.update({
             where: { id: existingRecordPayment.id },
             data: {
               amount: actualCost,
-              method: "CASH",
               status: "SUCCESS",
             },
           });
         } else {
+          // Walk-in with no pre-created payment: create one now
           updatedPayment = await tx.payment.create({
             data: {
               userId,

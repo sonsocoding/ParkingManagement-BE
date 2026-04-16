@@ -6,6 +6,7 @@ export const checkInSchema = z.object({
     vehicleId: z.string().min(1, "Vehicle ID is required"),
     parkingSlotId: z.string().min(1, "Parking Slot ID is required"),
     parkingLotId: z.string().min(1, "Parking Lot ID is required"),
+    bookingId: z.string().optional(), // optional: link check-in to a pre-existing booking
   }),
 });
 

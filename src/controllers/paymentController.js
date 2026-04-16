@@ -140,9 +140,9 @@ const handleVnpayIpn = asyncHandler(async (req, res) => {
     return res.status(404).json({ RspCode: "01", Message: "Order not found" });
   }
 
-  // Find the payment associated with the booking manually
-  const payment = await prisma.payment.findFirst({
-    where: { bookingId: booking.id, method: "VNPAY" },
+  // Find the payment associated with this booking (bookingId is @unique in schema)
+  const payment = await prisma.payment.findUnique({
+    where: { bookingId: booking.id },
   });
 
   if (!payment) {

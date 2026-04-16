@@ -26,69 +26,48 @@ const createBooking = asyncHandler(async (req, res) => {
   const { vehicleId, parkingSlotId, parkingLotId, startTime, endTime, paymentMethod } = req.body;
   const userId = req.user.id;
 
-  // check if parking slot is available
-  const parkingSlot = await prisma.parkingSlot.findUnique({
-    where: { id: parkingSlotId },
-  });
+  // use $transaction here to prevent race condition
+  const result = await prisma.$transaction(async (tx) => {
+    // find slot and lock it
+    const parkingSlot = await tx.parkingSlot.findUnique({
+      where: { id: parkingSlotId },
+    });
+    if (parkingSlot.status !== "AVAILABLE") {
+      throw new Error("Parking slot is not available");
+    }
 
-  if (!parkingSlot) {
-    return res.status(404).json(formatError("Parking slot not found"));
-  }
+    // find parking lot, check if it matches with slot
+    const parkingLot = await tx.parkingLot.findUnique({
+      where: { id: parkingLotId },
+    });
+    if (parkingLot.id !== parkingSlot.parkingLotId) {
+      throw new Error("Parking lot and parking slot do not match");
+    }
 
-  if (parkingSlot.status !== "AVAILABLE") {
-    return res.status(400).json(formatError("Parking slot is not available"));
-  }
+    // find vehicle, check if user owns it
+    const vehicle = await tx.vehicle.findUnique({
+      where: { id: vehicleId },
+    });
+    if (vehicle.userId !== userId) {
+      throw new Error("This is not your vehicle");
+    }
 
-  // find parking lot, check if it matches with slot
-  const parkingLot = await prisma.parkingLot.findUnique({
-    where: { id: parkingLotId },
-  });
+    // calculate estimate cost
+    const hours = (new Date(endTime) - new Date(startTime)) / (1000 * 60 * 60);
+    const estimatedCost =
+      (vehicle.vehicleType === "CAR" ? parkingLot.carHourlyRate : parkingLot.motorbikeHourlyRate) *
+      hours;
 
-  if (!parkingLot) {
-    return res.status(404).json(formatError("Parking lot not found"));
-  }
+    // -- handle payment -- //
+    if (paymentMethod === "VNPAY") {
+      throw new Error("VNPay booking flow is temporarily disabled for API stabilization");
+    }
 
-  if (parkingLot.id !== parkingSlot.parkingLotId) {
-    return res.status(400).json(formatError("Parking lot and parking slot do not match"));
-  }
-
-  // find vehicle, check if user owns it
-  const vehicle = await prisma.vehicle.findUnique({
-    where: { id: vehicleId },
-  });
-
-  if (!vehicle) {
-    return res.status(404).json(formatError("Vehicle not found"));
-  }
-
-  if (vehicle.userId !== userId) {
-    return res.status(403).json(formatError("This is not your vehicle"));
-  }
-
-  // calculate estimate cost
-  const hours = (new Date(endTime) - new Date(startTime)) / (1000 * 60 * 60);
-  const estimatedCost =
-    (vehicle.vehicleType === "CAR" ? parkingLot.carHourlyRate : parkingLot.motorbikeHourlyRate) *
-    hours;
-
-  const normalizedPaymentMethod = paymentMethod ?? "CASH";
-
-  if (normalizedPaymentMethod === "VNPAY") {
-    return res
-      .status(400)
-      .json(formatError("VNPay booking flow is temporarily disabled for API stabilization"));
-  }
-
-  if (normalizedPaymentMethod !== "CASH") {
-    return res.status(400).json(formatError("Only CASH payment method is supported right now"));
-  }
-
-  // -- handle payment -- //
-  // if pay with cash, confirm booking immediately and reserve slot
-  if (normalizedPaymentMethod === "CASH") {
-    const [booking, updatedSlot, payment] = await prisma.$transaction([
+    // if pay with cash, confirm booking immediately and reserve slot
+    let booking, updatedSlot, payment;
+    if (paymentMethod === "CASH") {
       // create booking with CONFIRMED status
-      prisma.booking.create({
+      booking = await tx.booking.create({
         data: {
           userId,
           vehicleId,
@@ -99,33 +78,28 @@ const createBooking = asyncHandler(async (req, res) => {
           estimatedCost,
           status: "CONFIRMED",
         },
-      }),
+      });
       // change slot status to reserved
-      prisma.parkingSlot.update({
+      updatedSlot = await tx.parkingSlot.update({
         where: { id: parkingSlotId },
         data: {
           status: "RESERVED",
         },
-      }),
-      // create payment
-      prisma.payment.create({
+      });
+      // create payment — must be linked to the booking
+      payment = await tx.payment.create({
         data: {
           userId,
+          bookingId: booking.id,
           amount: estimatedCost,
           method: "CASH",
           status: "PENDING",
         },
-      }),
-    ]);
-
-    // manually link payment to booking
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: { bookingId: booking.id },
-    });
-
-    return res.status(201).json(formatSuccess({ booking, updatedSlot, payment }));
-  }
+      });
+    }
+    return { booking, updatedSlot, payment };
+  });
+  return res.status(201).json(formatSuccess({ result }));
 });
 
 const getOwnBooking = asyncHandler(async (req, res) => {
@@ -181,7 +155,7 @@ const updateOwnBooking = asyncHandler(async (req, res) => {
     return res.status(400).json(formatError("Cannot update a completed or cancelled booking"));
   }
 
-  const updateData = { vehicleId, parkingSlotId, parkingLotId, startTime, endTime };
+  const updateData = { vehicleId, parkingLotId, startTime, endTime };
 
   // Recalculate cost if time changed
   if (startTime || endTime) {
@@ -190,6 +164,34 @@ const updateOwnBooking = asyncHandler(async (req, res) => {
       endTime || existingBooking.endTime,
       existingBooking,
     );
+  }
+
+  // If the user is changing their parking slot, swap slot reservations atomically
+  const isChangingSlot = parkingSlotId && parkingSlotId !== existingBooking.parkingSlotId;
+  if (isChangingSlot) {
+    const booking = await prisma.$transaction(async (tx) => {
+      // Validate new slot is available
+      const newSlot = await tx.parkingSlot.findUnique({ where: { id: parkingSlotId } });
+      if (!newSlot || newSlot.status !== "AVAILABLE") {
+        throw new Error("The new parking slot is not available");
+      }
+      // Release old slot
+      await tx.parkingSlot.update({
+        where: { id: existingBooking.parkingSlotId },
+        data: { status: "AVAILABLE" },
+      });
+      // Reserve new slot
+      await tx.parkingSlot.update({
+        where: { id: parkingSlotId },
+        data: { status: "RESERVED" },
+      });
+      // Update booking
+      return tx.booking.update({
+        where: { id },
+        data: { ...updateData, parkingSlotId },
+      });
+    });
+    return res.status(200).json(formatSuccess({ booking }));
   }
 
   const booking = await prisma.booking.update({
@@ -356,8 +358,8 @@ const cancelOwnBooking = asyncHandler(async (req, res) => {
     return res.status(403).json(formatError("You are not authorized to cancel this booking"));
   }
 
-  // Only allow cancellation of CONFIRMED bookings
-  if (existingBooking.status !== "CONFIRMED") {
+  // Allow cancellation of PENDING_PAYMENT and CONFIRMED bookings
+  if (existingBooking.status !== "CONFIRMED" && existingBooking.status !== "PENDING_PAYMENT") {
     return res
       .status(400)
       .json(formatError(`Cannot cancel a booking with status ${existingBooking.status}`));

@@ -1,51 +1,42 @@
 # Backend Development Instruction Guide
 
 > Step-by-step instructions for building out the Smart Parking Management System backend.  
-> No code provided — this is a roadmap to guide your implementation decisions.
+> Phases 0–3 (core modules) are **complete**. Remaining work is Phase 4 (cross-cutting) and Phases 6–7 (MonthlyPass, AdminLog).
 
 ---
 
-## Phase 0: Fix Critical Issues in Existing Code
+## Phase 0: Fix Critical Issues in Existing Code ✅ DONE
 
-Before building anything new, fix the issues listed in `improvement.md`. Specifically:
+All items fixed:
 
-1. **Add `try/catch`** to every function in `authController.js`
-2. **Hash the password** in `createUser` (userController.js) before saving
-3. **Fix `login` response** to return data from the DB user object, not from `req.body`
-4. **Add `role` to `getMe` select** so the frontend can check the user's role
-5. **Exclude `password`** from all user query responses (`getOwnProfile`, `getAllUsers`)
-6. **Fix HTTP status codes** — `409` for duplicates, `500` for server errors, no body on `204`
-7. **Change `createUser` route** from `PUT /create` to `POST /`
-
-Once these are done, you have a solid auth + user + vehicle foundation to build on.
+1. **`try/catch`** replaced by `asyncHandler` wrapper
+2. **Password hashing** implemented in `authController.js`
+3. **`login` response** returns data from DB user object
+4. **`role`** included in `getMe` select
+5. **`password`** excluded from all user query responses
+6. **HTTP status codes** fixed — `409` for duplicates, `500` for server errors
+7. **`createUser` route** changed to `POST /`
 
 ---
 
-## Phase 1: Establish Backend Utilities & Patterns
+## Phase 1: Establish Backend Utilities & Patterns ✅ DONE
 
-Before building more features, set up shared patterns that every future controller will use.
+### 1.1 `asyncHandler` Utility ✅
+- Wraps all controller exports — no manual try/catch anywhere
 
-### 1.1 Create `asyncHandler` Utility
-- A wrapper function that catches promise rejections in async route handlers
-- Eliminates the need for `try/catch` in every single controller function
-- Wrap every controller export with it
+### 1.2 Global Error Handler Middleware ✅
+- `src/middleware/errorHandler.js` — 4-param handler
+- Maps Prisma errors (P2002, P2025, P2003, P2014) to proper HTTP codes
+- Returns clean `{ status: "error", message: "..." }` shape
 
-### 1.2 Create Global Error Handler Middleware
-- Add an error-handling middleware to `app.js` (must have 4 params: `err, req, res, next`)
-- Log the full error server-side
-- Return a clean `{ status: "error", message: "..." }` to the client
-- Handle Prisma-specific errors (unique constraint, record not found, etc.) into proper HTTP status codes
+### 1.3 `formatResponse` Utility ✅
+- `formatSuccess(data, message?)` → `{ status: "success", data, [message] }`
+- `formatError(message)` → `{ status: "error", message }`
 
-### 1.3 Create `formatResponse` Utility
-- Standardize all success responses to `{ status: "success", data: { ... } }`
-- Standardize all error responses to `{ status: "error", message: "..." }`
-- Use this in every controller going forward
-
-### 1.4 Add Input Validation
-- Choose a validation library: `zod` (recommended) or `express-validator`
-- Create validation schemas for each route's request body
-- Apply validation as middleware before the controller runs
-- Return `400 Bad Request` with field-specific error messages
+### 1.4 Input Validation ✅
+- `zod` schemas in `src/schemas/` — one file per module
+- `validate` middleware applies schema before controller runs
+- Returns `400 Bad Request` with field-specific error messages
 
 ---
 
@@ -53,58 +44,59 @@ Before building more features, set up shared patterns that every future controll
 
 Build each module in this order — each one builds on the previous:
 
-### 2.1 Parking Lot Module
-- **Why first**: Everything else (slots, bookings, records) depends on a parking lot existing
+### 2.1 Parking Lot Module ✅ DONE
 - **Controller actions**: create, getAll, getById, update, delete
 - **Route access**:
   - `GET` — Any authenticated user can view
   - `POST/PUT/DELETE` — ADMIN only
 - **Important**: Include `slots` count in responses, validate `totalSlots` matches zone config
 
-### 2.2 Parking Slot Module
-- **Why second**: Bookings reference specific slots
-- **Controller actions**: create (bulk by zone), getByLotId, update status, delete
+### 2.2 Parking Slot Module ✅ DONE
+- **Controller actions**: create (bulk), getByLotId, updateStatus, update, delete
 - **Route access**: ADMIN only for mutations, any authenticated user can view
 - **Important**: Slot status transitions: `AVAILABLE ↔ RESERVED ↔ OCCUPIED`, `AVAILABLE ↔ MAINTENANCE`
 
-### 2.3 Booking Module
-- **Why third**: Core user-facing feature, references User + Vehicle + Slot + Lot
-- **Controller actions**: create, getOwn, getAll, getById, cancel, complete
+### 2.3 Booking Module ✅ DONE
+- **Controller actions**: create, getOwn, getAll, getById, updateOwn, updateById (admin), updateStatus (admin), cancelOwn, deleteById (admin)
 - **Route access**:
-  - USER — CRUD own bookings only
-  - ADMIN — View/modify all, force cancel, force complete
+  - USER — Create, view own, update own, cancel own
+  - ADMIN — View/modify all, force cancel, force complete, delete
   - MANAGER — View all (read-only)
-- **Important**:
-  - When creating a booking → change slot status to `RESERVED`
-  - When cancelling → change slot status back to `AVAILABLE`
-  - When completing → change slot status to `AVAILABLE` and create a ParkingRecord
-  - Calculate `estimatedCost` from `hourlyRate × hours`
-  - Prevent double-booking the same slot (check slot status before confirming)
+- **Booking flow**:
+  - When creating with `CASH` → status `CONFIRMED` + slot `RESERVED` + payment `PENDING` (linked to booking)
+  - When creating with `VNPAY` → currently disabled
+  - When cancelling (CONFIRMED or PENDING_PAYMENT) → slot `AVAILABLE`
+  - `estimatedCost` = `hourlyRate × hours` based on vehicle type
+  - `COMPLETED` status is reached only after physical checkout, not via admin status update
 
-### 2.4 Parking Record Module
-- **Why fourth**: Created automatically when bookings complete or vehicles check in
-- **Controller actions**: checkIn, checkOut, getByVehicle, getByLot, getAll
+### 2.4 Parking Record Module ✅ DONE
+- **Controller actions**: checkIn, checkOut, getOwnRecord, getAllRecord
 - **Route access**:
-  - ADMIN — Create/manage records
-  - MANAGER — View all (read-only)
-  - USER — View own records
-- **Important**:
-  - `checkIn` → set slot to `OCCUPIED`
-  - `checkOut` → calculate `actualCost` from real time, set slot to `AVAILABLE`
+  - USER — checkIn (own vehicle), checkOut (own record), view own records
+  - ADMIN/MANAGER — View all (read-only)
+- **checkIn rules**:
+  - Walk-in (no bookingId): slot must be `AVAILABLE`
+  - Pre-booked (bookingId provided): slot can be `RESERVED`; booking must be `CONFIRMED`
+  - Sets slot to `OCCUPIED`; sets booking to `COMPLETED` when linked
+- **checkOut flow**:
+  - Calculates `actualCost` from real time delta × hourly rate
+  - Updates existing booking payment to `SUCCESS` (preserving original method)
+  - Sets slot back to `AVAILABLE`
 
-### 2.5 Payment Module
-- **Why fifth**: Created when bookings are confirmed or monthly passes purchased
-- **Controller actions**: create, getOwn, getAll, getById, updateStatus
+### 2.5 Payment Module ✅ DONE
+- **Controller actions**: createPayment (admin), getOwnPayment, getAllPayment, getPaymentByUserId, getPaymentById, updatePaymentStatus, handleVnpayIpn
 - **Route access**:
   - USER — View own payments
-  - ADMIN — View all, manual override, refund
+  - ADMIN — View all, manual override/entry, refund, change status
   - MANAGER — View all (read-only)
 - **Important**:
-  - Link payment to either `bookingId` OR `monthlyPassId` (never both)
-  - Support payment methods: CASH, CARD, MOMO, VNPAY
-  - Payment status flow: `PENDING → SUCCESS` or `PENDING → FAILED`, `SUCCESS → REFUNDED`
+  - Payment is auto-created inside `createBooking` (linked to bookingId)
+  - Payment is finalized (amount + SUCCESS) at `checkOut`
+  - VNPay IPN endpoint is public (no JWT required)
+  - Status flow: `PENDING → SUCCESS` or `PENDING → FAILED`, `SUCCESS → REFUNDED`
+  - Supported methods: `CASH`, `VNPAY`
 
-### 2.6 Monthly Pass Module
+### 2.6 Monthly Pass Module ⬜ TODO
 - **Controller actions**: register, getOwn, getAll, renew, cancel
 - **Route access**:
   - USER — Register, view, renew, cancel own
@@ -114,7 +106,7 @@ Build each module in this order — each one builds on the previous:
   - Pass status: `ACTIVE → EXPIRED` (automatic by date), `ACTIVE → CANCELLED`
   - Link to a specific parking lot and vehicle type
 
-### 2.7 Admin Log Module
+### 2.7 Admin Log Module ⬜ TODO
 - **Controller actions**: getAll, getByAdmin, getByResourceType
 - **Route access**: ADMIN + MANAGER only (read-only for both)
 - **Important**:
@@ -124,15 +116,15 @@ Build each module in this order — each one builds on the previous:
 
 ---
 
-## Phase 3: Wire Everything Together
+## Phase 3: Wire Everything Together ✅ DONE (for implemented modules)
 
-### 3.1 Mount All Routes in `app.js`
-- Import each new route file
-- Mount under `/api/parking-lots`, `/api/slots`, `/api/bookings`, `/api/records`, `/api/payments`, `/api/monthly-passes`, `/api/admin-logs`
+### 3.1 Mount All Routes in `app.js` ✅
+- All implemented route files are mounted
+- `/api/parking-lots`, `/api/parking-slots`, `/api/bookings`, `/api/records`, `/api/payments`
 
-### 3.2 Update Seed Script
-- Add more realistic data for new modules
-- Test the full flow: User → Vehicle → Booking → ParkingRecord → Payment
+### 3.2 Update Seed Script ✅
+- Seed reflects the full flow: User → Vehicle → Booking (CONFIRMED + PENDING_PAYMENT) → ParkingRecord → Payment (linked to bookingId)
+- One of each role, 1 parking lot, 10 slots across 3 zones, 2 vehicles, 2 bookings, 2 payments
 
 ### 3.3 Create/Update Postman Collection
 - Add requests for every new endpoint
@@ -184,9 +176,12 @@ For each new module, follow this exact order:
 | File naming | `camelCase.js` (e.g., `parkingLotController.js`) |
 | Route prefix | `/api/resource-name` (kebab-case, plural) |
 | HTTP methods | `GET` list/read, `POST` create, `PUT` update, `DELETE` remove |
-| Auth middleware | Always `authenticate` first, then `authorize(roles)` |
+| Auth middleware | Always `authenticate` first, then `authorize(roles)`, then `validate(schema)` |
 | Ownership checks | Do in the controller, not middleware — check `resource.userId === req.user.id` |
 | Prisma imports | Always from `../config/db.js` — never create new `PrismaClient()` instances |
 | IDs | Use Prisma `cuid()` — never expose auto-increment IDs |
 | Dates | Let Prisma handle `createdAt`/`updatedAt` — use `DateTime` for domain dates |
 | Decimals | Use `Decimal(10,2)` for all money fields — never use `Float` |
+| Payment method | `CASH` or `VNPAY` only (schema updated — CARD and MOMO removed) |
+| BookingStatus | `PENDING_PAYMENT`, `CONFIRMED`, `COMPLETED`, `CANCELLED` |
+| formatSuccess | Signature: `formatSuccess(data, message?)` — do NOT swap arg order |
