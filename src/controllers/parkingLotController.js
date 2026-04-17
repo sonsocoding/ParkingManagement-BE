@@ -71,10 +71,24 @@ const deleteLot = asyncHandler(async (req, res) => {
 
   const deletedLot = await prisma.parkingLot.findUnique({
     where: { id },
+    include: {
+      slots: true, // Need to check slot statuses before deleting
+    }
   });
 
   if (!deletedLot) {
     return res.status(404).json(formatError("Parking lot not found"));
+  }
+
+  // EDGE CASE BUG FIX: Check if the lot has any slots that are OCCUPIED or RESERVED.
+  // Deleting the lot cascades down and deletes slots -> bookings -> records -> payments.
+  const hasActiveSlots = deletedLot.slots.some(
+    (slot) => slot.status === "OCCUPIED" || slot.status === "RESERVED"
+  );
+  if (hasActiveSlots) {
+    return res.status(400).json(
+      formatError("Cannot delete this parking lot because it has active vehicles parked or reserved. Clear all slots first.")
+    );
   }
 
   await prisma.parkingLot.delete({

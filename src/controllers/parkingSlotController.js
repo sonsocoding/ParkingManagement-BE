@@ -111,6 +111,14 @@ const deleteSlot = asyncHandler(async (req, res) => {
     return res.status(404).json(formatError("Parking slot not found"));
   }
 
+  // EDGE CASE BUG FIX: Never delete a slot that is OCCUPIED or RESERVED.
+  // Doing so will cause Prisma Cascade to silently destroy the active Booking and ParkingRecord!
+  if (deletedSlot.status !== "AVAILABLE" && deletedSlot.status !== "MAINTENANCE") {
+    return res.status(400).json(
+      formatError(`Cannot delete a slot with status ${deletedSlot.status}. Please check out vehicles and cancel bookings first.`)
+    );
+  }
+
   await prisma.parkingSlot.delete({
     where: { id },
   });

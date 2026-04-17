@@ -81,6 +81,27 @@ const deleteOwnVehicle = asyncHandler(async (req, res) => {
     return res.status(403).json(formatError("Forbidden: You are not the owner of this vehicle"));
   }
 
+  // EDGE CASE BUG FIX: Prevent deleting a vehicle if it has active bookings or is currently parked.
+  const activeBookings = await prisma.booking.findFirst({
+    where: { 
+      vehicleId: id,
+      status: { in: ["PENDING_PAYMENT", "CONFIRMED"] }
+    }
+  });
+  if (activeBookings) {
+    return res.status(400).json(formatError("Cannot delete vehicle because it has active bookings."));
+  }
+
+  const activeRecords = await prisma.parkingRecord.findFirst({
+    where: {
+      vehicleId: id,
+      status: "CHECKED_IN"
+    }
+  });
+  if (activeRecords) {
+    return res.status(400).json(formatError("Cannot delete vehicle because it is currently checked in at a parking lot."));
+  }
+
   const deletedVehicle = await prisma.vehicle.delete({
     where: { id },
   });
@@ -141,6 +162,27 @@ const deleteVehicleById = asyncHandler(async (req, res) => {
 
   if (!vehicle) {
     return res.status(404).json(formatError("Vehicle not found"));
+  }
+
+  // EDGE CASE BUG FIX: Prevent deleting a vehicle if it has active bookings or is currently parked.
+  const activeBookings = await prisma.booking.findFirst({
+    where: { 
+      vehicleId: id,
+      status: { in: ["PENDING_PAYMENT", "CONFIRMED"] }
+    }
+  });
+  if (activeBookings) {
+    return res.status(400).json(formatError("Cannot delete vehicle because it has active bookings."));
+  }
+
+  const activeRecords = await prisma.parkingRecord.findFirst({
+    where: {
+      vehicleId: id,
+      status: "CHECKED_IN"
+    }
+  });
+  if (activeRecords) {
+    return res.status(400).json(formatError("Cannot delete vehicle because it is currently checked in at a parking lot."));
   }
 
   const deletedVehicle = await prisma.vehicle.delete({

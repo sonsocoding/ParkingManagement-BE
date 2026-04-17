@@ -51,6 +51,27 @@ const deleteOwnProfile = asyncHandler(async (req, res) => {
     return res.status(404).json(formatError("User not found"));
   }
 
+  // EDGE CASE BUG FIX: Prevent deleting user if they have active engagements.
+  const activeBookings = await prisma.booking.findFirst({
+    where: { 
+      userId: userId,
+      status: { in: ["PENDING_PAYMENT", "CONFIRMED"] }
+    }
+  });
+  if (activeBookings) {
+    return res.status(400).json(formatError("Cannot delete account because you have active bookings. Please cancel them first."));
+  }
+
+  const activeRecords = await prisma.parkingRecord.findFirst({
+    where: {
+      userId: userId,
+      status: "CHECKED_IN"
+    }
+  });
+  if (activeRecords) {
+    return res.status(400).json(formatError("Cannot delete account because you have vehicles currently checked in at a parking lot."));
+  }
+
   await prisma.user.delete({
     where: { id: userId },
   });
@@ -119,6 +140,27 @@ const deleteUserById = asyncHandler(async (req, res) => {
 
   if (!deletedUser) {
     return res.status(404).json(formatError("User not found"));
+  }
+
+  // EDGE CASE BUG FIX: Prevent deleting user if they have active engagements.
+  const activeBookings = await prisma.booking.findFirst({
+    where: { 
+      userId: id,
+      status: { in: ["PENDING_PAYMENT", "CONFIRMED"] }
+    }
+  });
+  if (activeBookings) {
+    return res.status(400).json(formatError("Cannot delete user because they have active bookings."));
+  }
+
+  const activeRecords = await prisma.parkingRecord.findFirst({
+    where: {
+      userId: id,
+      status: "CHECKED_IN"
+    }
+  });
+  if (activeRecords) {
+    return res.status(400).json(formatError("Cannot delete user because they have vehicles currently checked in."));
   }
 
   await prisma.user.delete({

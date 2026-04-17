@@ -182,6 +182,26 @@ async function main() {
   });
   console.log("✅ Created vehicle 2:", vehicle2.plateNumber);
 
+  const vehicle3 = await prisma.vehicle.create({
+    data: {
+      userId: user.id,
+      plateNumber: "30C-55555",
+      vehicleType: "CAR",
+      color: "White",
+    },
+  });
+  console.log("✅ Created vehicle 3:", vehicle3.plateNumber);
+
+  const vehicle4 = await prisma.vehicle.create({
+    data: {
+      userId: user.id,
+      plateNumber: "30D-44444",
+      vehicleType: "MOTORBIKE",
+      color: "Red",
+    },
+  });
+  console.log("✅ Created vehicle 4:", vehicle4.plateNumber);
+
   // ===== CREATE BOOKINGS & PAYMENTS =====
   // Booking 1: CONFIRMED + paid (slot is RESERVED, will be checked in)
   const now = new Date();

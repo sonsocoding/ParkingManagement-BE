@@ -330,18 +330,18 @@ const deleteBookingById = asyncHandler(async (req, res) => {
     return res.status(404).json(formatError("Booking not found"));
   }
 
-  // Release slot and delete booking atomically
-  const [updatedSlot, booking] = await prisma.$transaction([
-    prisma.parkingSlot.update({
-      where: { id: existingBooking.parkingSlotId },
-      data: { status: "AVAILABLE" },
-    }),
-    prisma.booking.delete({
-      where: { id },
-    }),
-  ]);
+  // EDGE CASE BUG FIX: Prevent deleting active bookings directly.
+  if (existingBooking.status === "CONFIRMED" || existingBooking.status === "PENDING_PAYMENT") {
+    return res.status(400).json(formatError(`Cannot delete a booking with status ${existingBooking.status}. Cancel it first.`));
+  }
 
-  return res.status(200).json(formatSuccess({ booking, updatedSlot }));
+  // If the booking was COMPLETED or CANCELLED, it no longer "owns" the slot, so we shouldn't force the slot to AVAILABLE
+  // We just delete the booking.
+  const booking = await prisma.booking.delete({
+    where: { id },
+  });
+
+  return res.status(200).json(formatSuccess({ booking }));
 });
 
 const cancelOwnBooking = asyncHandler(async (req, res) => {
