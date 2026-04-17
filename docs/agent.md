@@ -8,7 +8,7 @@
 
 A **Smart Parking Management System** backend — REST API built with Node.js, Express 5, Prisma ORM, and PostgreSQL (NeonDB). Uses JWT (httpOnly cookie + Bearer header) for authentication and role-based access control (RBAC) with three roles: `ADMIN`, `MANAGER`, `USER`.
 
-**Current state**: All core modules are implemented — Auth, User, Vehicle, ParkingLot, ParkingSlot, Booking, ParkingRecord, and Payment controllers and routes are all active. MonthlyPass and AdminLog schemas exist in the DB but have no routes or controllers yet.
+**Current state**: All modules are fully implemented — Auth, User, Vehicle, ParkingLot, ParkingSlot, Booking, ParkingRecord, Payment, and MonthlyPass.
 
 ---
 
@@ -16,7 +16,7 @@ A **Smart Parking Management System** backend — REST API built with Node.js, E
 
 | File | Purpose |
 |---|---|
-| `prisma/schema.prisma` | Full database schema — 10 models, 7 enums. **Read this to understand all data relationships.** |
+| `prisma/schema.prisma` | Full database schema — 9 models, 7 enums. **Read this to understand all data relationships.** |
 | `docs/roles.md` | Permission matrix — who can do what. **Consult this before writing any route.** |
 | `docs/instruction.md` | Development roadmap — phases and build order. **Follow this for new modules.** |
 | `docs/folder_structures.md` | What exists and what's `[TODO]`. |
@@ -67,7 +67,6 @@ USER: POST /api/records/checkin  { vehicleId, parkingSlotId, parkingLotId, booki
   → Check booking is CONFIRMED (RESERVED slot is accepted here — not AVAILABLE)
   → ParkingRecord created with status: CHECKED_IN
   → Slot set to OCCUPIED
-  → Booking status remains CONFIRMED until checkout
 
 USER: PUT /api/records/:id/checkout
   → actualCost calculated from real check-in/check-out time
@@ -95,7 +94,39 @@ PENDING_PAYMENT → CANCELLED
 CONFIRMED       → CANCELLED
 ```
 
-The `COMPLETED` status is only reached after physical checkout (`PUT /api/records/:id/checkout`), not by the admin status override.
+---
+
+## Monthly Pass Flow
+
+A monthly pass is system-wide — it grants access to **any parking lot**, but is tied to **one specific vehicle** and **one vehicle type**. One vehicle can only have one active pass at a time.
+
+### Pricing (set by admin at runtime via `PUT /api/monthly-passes/price`)
+
+| Vehicle Type | Default Price |
+|---|---|
+| CAR | 1,500,000 VND/month |
+| MOTORBIKE | 300,000 VND/month |
+
+```
+USER: POST /api/monthly-passes  { vehicleType, vehicleId, months }
+  → Validates: user owns vehicle, vehicle type matches, no existing ACTIVE pass for type, vehicle not in another pass
+  → MonthlyPass created with status: ACTIVE
+  → Payment created: status PENDING, linked to monthlyPassId
+
+USER: PUT /api/monthly-passes/:id/renew  { months }
+  → Extends endDate from current end (or now if expired)
+  → Sets status back to ACTIVE
+  → New Payment created (not linked to monthlyPassId due to @unique constraint)
+
+USER: DELETE /api/monthly-passes/:id
+  → Sets status to CANCELLED (only ACTIVE passes can be cancelled)
+
+ADMIN: PUT /api/monthly-passes/:id/status  { status }
+  → Force-sets any status (ACTIVE/EXPIRED/CANCELLED)
+
+ADMIN: PUT /api/monthly-passes/price  { carMonthlyPrice?, motorbikeMonthlyPrice? }
+  → Updates in-memory PASS_PRICES — affects all future registrations/renewals
+```
 
 ---
 
@@ -195,28 +226,25 @@ formatError("Something went wrong")    // error message
 3. **Never expose raw error objects** to the client — log server-side, return generic message
 4. **Never use `404` for server errors** — use `500` for internal errors, `404` only for "not found"
 5. **Never send a body with `204`** — `res.status(204).send()`, no `.json()`
-6. **Never destructure `req.body` for values you already have from the DB** — use the queried object
-7. **Never create payment without linking bookingId** — orphaned payments break the checkout flow
-8. **Never check `status !== AVAILABLE`** when a booking check-in is expected — reserved slots are valid targets
+6. **Never create payment without linking bookingId or monthlyPassId** — orphaned payments break the flow
+7. **Never check `status !== AVAILABLE`** when a booking check-in is expected — reserved slots are valid targets
+8. **Never use `CANCELLED` as a `PaymentStatus`** — `PaymentStatus` enum is `PENDING / SUCCESS / FAILED / REFUNDED`. Use `FAILED` when cancelling a booking's payment.
+9. **Monthly pass renewal payments** are NOT linked via `monthlyPassId` (schema has `@unique`) — they are standalone payment records
 
 ---
 
 ## Database Models Reference
 
 ```
-User ──┬── Vehicle ──── ParkingRecord
-       │                     │
-       ├── Booking ──────────┘
-       │     │
-       │     ├── ParkingSlot ── ParkingLot
-       │     │                      │
-       │     └── Payment            ├── ParkingSlot[]
-       │                            ├── ParkingRecord[]
-       ├── MonthlyPass ─────────────┘
-       │     │
-       │     └── Payment
+User ──┬── Vehicle ──┬── ParkingRecord
+       │             ├── Booking
+       │             └── MonthlyPass ──── Payment
        │
-       └── AdminLog (only ADMIN creates entries)
+       ├── Booking ──┬── ParkingSlot ── ParkingLot
+       │             └── Payment
+       │
+       ├── ParkingRecord ──── Payment
+       └── Payment
 ```
 
 ### Enums
@@ -240,6 +268,7 @@ User ──┬── Vehicle ──── ParkingRecord
 |---|---|
 | `npm run dev` | Start dev server with nodemon (port 3000) |
 | `npm run seed` | Seed database with test data |
+| `npx prisma db push` | Push schema changes to DB (no migration file) |
 | `npx prisma migrate dev` | Create and apply migration |
 | `npx prisma generate` | Regenerate Prisma client (to `src/generated/`) |
 | `npx prisma studio` | Open Prisma Studio (DB GUI) |
@@ -259,23 +288,21 @@ User ──┬── Vehicle ──── ParkingRecord
 
 ## Module Build Order
 
-If you're building new features, follow this order — each depends on the previous:
+All modules are complete:
 
 ```
 ✅ 1. ParkingLot    (standalone — no dependencies)
 ✅ 2. ParkingSlot   (depends on ParkingLot)
 ✅ 3. Booking       (depends on User, Vehicle, ParkingSlot, ParkingLot)
 ✅ 4. ParkingRecord (depends on Vehicle, ParkingSlot, ParkingLot, optionally Booking)
-✅ 5. Payment       (depends on User, Booking or MonthlyPass)
-⬜ 6. MonthlyPass   (depends on User, ParkingLot) — schema exists, no routes yet
-⬜ 7. AdminLog      (depends on User — created as side effect in other controllers) — schema exists, no routes yet
+✅ 5. Payment       (depends on User, Booking or MonthlyPass or ParkingRecord)
+✅ 6. MonthlyPass   (depends on User, Vehicle)
 ```
 
 ---
 
 ## Testing
 
-- Use the Postman collection at `test.json` (import into Postman)
 - Set `{{baseUrl}}` to `http://localhost:3000`
 - Login first, copy the token, set `{{token}}` and `{{admin_token}}`
 - Seed the DB before testing: `npm run seed`

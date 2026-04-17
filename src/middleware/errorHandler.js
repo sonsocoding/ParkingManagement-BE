@@ -43,10 +43,10 @@ export const errorHandler = (err, req, res, next) => {
     message = "Invalid or expired token.";
   }
 
-  // Ensure that 500 errors don't leak internal details to the client
-  if (statusCode === 500) {
-    message = "Internal server error";
-  }
+  // In production you might want to hide 500 errors by uncommenting this:
+  // if (statusCode === 500 && process.env.NODE_ENV === "production") {
+  //   message = "Internal server error";
+  // }
 
   return res.status(statusCode).json(formatError(message));
 };

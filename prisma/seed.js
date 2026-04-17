@@ -7,7 +7,6 @@ async function main() {
   console.log("🌱 Starting database seed...\n");
 
   // Clean previous data (dependency order: children first)
-  await prisma.adminLog.deleteMany({});
   await prisma.payment.deleteMany({});
   await prisma.monthlyPass.deleteMany({});
   await prisma.parkingRecord.deleteMany({});
@@ -273,34 +272,25 @@ async function main() {
   const monthlyPass = await prisma.monthlyPass.create({
     data: {
       userId: user.id,
-      parkingLotId: parkingLot.id,
       vehicleType: "CAR",
       startDate: new Date("2026-04-01"),
       endDate: new Date("2026-05-01"),
-      price: 1500000, // 1,500,000 VND/month
+      price: 1500000, // 1,500,000 VND/month (default CAR price)
       status: "ACTIVE",
+    },
+  });
+  // Link a payment to the monthly pass
+  await prisma.payment.create({
+    data: {
+      userId: user.id,
+      monthlyPassId: monthlyPass.id,
+      amount: 1500000,
+      method: "CASH",
+      status: "SUCCESS", // already paid at registration
     },
   });
   console.log("✅ Created monthly pass:", monthlyPass.id);
 
-  // ===== CREATE ADMIN LOG =====
-  const log = await prisma.adminLog.create({
-    data: {
-      adminId: admin.id,
-      action: "CREATE",
-      resourceType: "ParkingLot",
-      resourceId: parkingLot.id,
-      changes: {
-        new: {
-          name: parkingLot.name,
-          address: parkingLot.address,
-          totalSlots: parkingLot.totalSlots,
-        },
-      },
-      ipAddress: "127.0.0.1",
-    },
-  });
-  console.log("✅ Created admin log:", log.id);
 
   console.log("\n🎉 Database seed completed successfully!\n");
 
@@ -312,9 +302,9 @@ async function main() {
   console.log(`   - Vehicles: 2`);
   console.log(`   - Bookings: 2 (1 CONFIRMED + checked-in, 1 PENDING_PAYMENT)`);
   console.log(`   - Parking Records: 1 (CHECKED_IN)`);
-  console.log(`   - Payments: 2 (both PENDING, linked to their booking)`);
-  console.log(`   - Monthly Passes: 1`);
-  console.log(`   - Admin Logs: 1\n`);
+  console.log(`   - Payments: 3 (2 booking + 1 monthly pass)`);
+  console.log(`   - Monthly Passes: 1 (CAR, ACTIVE)`);
+
 
   console.log("🔐 Demo Credentials:");
   console.log("   Admin    → admin@parking.com / admin123");

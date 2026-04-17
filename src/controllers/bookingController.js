@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatSuccess, formatError } from "../utils/formatResponse.js";
+import { createBookingSchema } from "../schemas/bookingSchema.js";
 
 const VALID_TRANSITIONS = {
   PENDING_PAYMENT: ["CONFIRMED", "CANCELLED"],
@@ -23,7 +24,9 @@ const calculateNewCost = async (startTime, endTime, existingBooking) => {
 };
 
 const createBooking = asyncHandler(async (req, res) => {
-  const { vehicleId, parkingSlotId, parkingLotId, startTime, endTime, paymentMethod } = req.body;
+  const validatedData = createBookingSchema.parse({ body: req.body });
+  const { vehicleId, parkingSlotId, parkingLotId, startTime, endTime, paymentMethod } =
+    validatedData.body;
   const userId = req.user.id;
 
   // use $transaction here to prevent race condition
@@ -44,12 +47,15 @@ const createBooking = asyncHandler(async (req, res) => {
       throw new Error("Parking lot and parking slot do not match");
     }
 
-    // find vehicle, check if user owns it
+    // find vehicle, check if user owns it, check if matches with slot type
     const vehicle = await tx.vehicle.findUnique({
       where: { id: vehicleId },
     });
     if (vehicle.userId !== userId) {
       throw new Error("This is not your vehicle");
+    }
+    if (vehicle.vehicleType !== parkingSlot.vehicleType) {
+      throw new Error("Vehicle type and parking slot type do not match");
     }
 
     // calculate estimate cost
@@ -64,39 +70,36 @@ const createBooking = asyncHandler(async (req, res) => {
     }
 
     // if pay with cash, confirm booking immediately and reserve slot
-    let booking, updatedSlot, payment;
-    if (paymentMethod === "CASH") {
-      // create booking with CONFIRMED status
-      booking = await tx.booking.create({
-        data: {
-          userId,
-          vehicleId,
-          parkingSlotId,
-          parkingLotId,
-          startTime,
-          endTime,
-          estimatedCost,
-          status: "CONFIRMED",
-        },
-      });
-      // change slot status to reserved
-      updatedSlot = await tx.parkingSlot.update({
-        where: { id: parkingSlotId },
-        data: {
-          status: "RESERVED",
-        },
-      });
-      // create payment — must be linked to the booking
-      payment = await tx.payment.create({
-        data: {
-          userId,
-          bookingId: booking.id,
-          amount: estimatedCost,
-          method: "CASH",
-          status: "PENDING",
-        },
-      });
-    }
+    // create booking with CONFIRMED status
+    const booking = await tx.booking.create({
+      data: {
+        userId,
+        vehicleId,
+        parkingSlotId,
+        parkingLotId,
+        startTime,
+        endTime,
+        estimatedCost,
+        status: "CONFIRMED",
+      },
+    });
+    // change slot status to reserved
+    const updatedSlot = await tx.parkingSlot.update({
+      where: { id: parkingSlotId },
+      data: {
+        status: "RESERVED",
+      },
+    });
+    // create payment — must be linked to the booking
+    const payment = await tx.payment.create({
+      data: {
+        userId,
+        bookingId: booking.id,
+        amount: estimatedCost,
+        method: "CASH",
+        status: "PENDING",
+      },
+    });
     return { booking, updatedSlot, payment };
   });
   return res.status(201).json(formatSuccess({ result }));
@@ -365,7 +368,8 @@ const cancelOwnBooking = asyncHandler(async (req, res) => {
       .json(formatError(`Cannot cancel a booking with status ${existingBooking.status}`));
   }
 
-  const [booking, updatedSlot] = await prisma.$transaction([
+  const [booking, updatedSlot, updatedPayment] = await prisma.$transaction([
+    // cancel booking
     prisma.booking.update({
       where: { id },
       data: {
@@ -373,7 +377,6 @@ const cancelOwnBooking = asyncHandler(async (req, res) => {
       },
       include: { parkingSlot: true },
     }),
-
     // change slot status to available
     prisma.parkingSlot.update({
       where: { id: existingBooking.parkingSlotId },
@@ -381,9 +384,16 @@ const cancelOwnBooking = asyncHandler(async (req, res) => {
         status: "AVAILABLE",
       },
     }),
+    // cancel payment
+    prisma.payment.update({
+      where: { bookingId: id },
+      data: {
+        status: "FAILED",
+      },
+    }),
   ]);
 
-  return res.status(200).json(formatSuccess({ booking, updatedSlot }));
+  return res.status(200).json(formatSuccess({ booking, updatedSlot, updatedPayment }));
 });
 
 export {

@@ -10,7 +10,6 @@ const checkIn = asyncHandler(async (req, res) => {
   const parkingSlot = await prisma.parkingSlot.findUnique({
     where: { id: parkingSlotId },
   });
-
   if (!parkingSlot) {
     return res.status(404).json(formatError("Parking slot not found"));
   }
@@ -29,22 +28,17 @@ const checkIn = asyncHandler(async (req, res) => {
   const parkingLot = await prisma.parkingLot.findUnique({
     where: { id: parkingLotId },
   });
-
   if (!parkingLot) {
     return res.status(404).json(formatError("Parking lot not found"));
   }
-
   if (parkingLot.id !== parkingSlot.parkingLotId) {
-    return res
-      .status(400)
-      .json(formatError("Parking lot and parking slot do not match"));
+    return res.status(400).json(formatError("Parking lot and parking slot do not match"));
   }
 
   // find vehicle
   const vehicle = await prisma.vehicle.findUnique({
     where: { id: vehicleId },
   });
-
   if (!vehicle) {
     return res.status(404).json(formatError("Vehicle not found"));
   }
@@ -64,39 +58,64 @@ const checkIn = asyncHandler(async (req, res) => {
 
   // check if vehicle type match slot type
   if (vehicle.vehicleType !== parkingSlot.vehicleType) {
-    return res
-      .status(400)
-      .json(formatError("Vehicle type does not match slot type"));
+    return res.status(400).json(formatError("Vehicle type does not match slot type"));
   }
-
   if (existingRecord) {
     return res.status(400).json(formatError("Vehicle is already checked in"));
   }
 
   // If user has a booking, validate it and check if we need to free their original slot
   let oldSlotIdToFree = null;
-
   if (bookingId) {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
     });
-
     if (!booking) {
       return res.status(404).json(formatError("Booking not found"));
     }
-
     if (booking.userId !== userId) {
       return res.status(403).json(formatError("This is not your booking"));
     }
 
     // Only a CONFIRMED booking (slot reserved + payment settled) can be checked into
     if (booking.status !== "CONFIRMED") {
-      return res.status(400).json(formatError(`Booking status is '${booking.status}'. Only CONFIRMED bookings can be checked in.`));
+      return res
+        .status(400)
+        .json(
+          formatError(
+            `Booking status is '${booking.status}'. Only CONFIRMED bookings can be checked in.`,
+          ),
+        );
     }
 
     // [FLEXIBLE APPROACH] If they parked in a different slot, track the original slot to free it
     if (booking.parkingSlotId !== parkingSlotId) {
       oldSlotIdToFree = booking.parkingSlotId;
+    }
+  }
+
+  // --- Monthly Pass check ---
+  // If user has an ACTIVE monthly pass for this vehicle type, see if we can apply it.
+  const activePass = await prisma.monthlyPass.findFirst({
+    where: {
+      userId,
+      vehicleType: vehicle.vehicleType,
+      status: "ACTIVE",
+    },
+  });
+
+  let appliedMonthlyPassId = null;
+  if (activePass) {
+    // Check if the pass is CURRENTLY being used by another vehicle
+    const passInUse = await prisma.parkingRecord.findFirst({
+      where: {
+        monthlyPassId: activePass.id,
+        status: "CHECKED_IN",
+      },
+    });
+    if (!passInUse) {
+      // The pass is free to use right now! Apply it.
+      appliedMonthlyPassId = activePass.id;
     }
   }
 
@@ -111,6 +130,7 @@ const checkIn = asyncHandler(async (req, res) => {
         checkInTime: new Date(),
         status: "CHECKED_IN",
         bookingId,
+        monthlyPassId: appliedMonthlyPassId,
       },
     }),
     // 2. Update the NEW slot status to occupied
@@ -144,9 +164,7 @@ const checkIn = asyncHandler(async (req, res) => {
   const parkingRecord = results[0];
   const updatedSlot = results[1];
 
-  return res
-    .status(201)
-    .json(formatSuccess({ parkingRecord, updatedSlot }, "Check-in successful"));
+  return res.status(201).json(formatSuccess({ parkingRecord, updatedSlot }, "Check-in successful"));
 });
 
 const checkOut = asyncHandler(async (req, res) => {
@@ -195,105 +213,101 @@ const checkOut = asyncHandler(async (req, res) => {
 
   // check if parking slot and parking lot match
   if (parkingSlot.parkingLotId !== parkingLot.id) {
-    return res
-      .status(400)
-      .json(formatError("Parking slot and parking lot do not match"));
+    return res.status(400).json(formatError("Parking slot and parking lot do not match"));
   }
 
   // check if parking record is already checked out
   if (parkingRecord.status === "CHECKED_OUT") {
-    return res
-      .status(400)
-      .json(formatError("Parking record is already checked out"));
+    return res.status(400).json(formatError("Parking record is already checked out"));
   }
 
   // calculate actual cost
   const checkOutTime = new Date();
-  const hours =
-    (new Date(checkOutTime) - new Date(parkingRecord.checkInTime)) /
-    (1000 * 60 * 60);
+  const hours = (new Date(checkOutTime) - new Date(parkingRecord.checkInTime)) / (1000 * 60 * 60);
   const rate =
-    vehicle.vehicleType === "CAR"
-      ? parkingLot.carHourlyRate
-      : parkingLot.motorbikeHourlyRate;
-  const actualCost = Number(rate) * hours;
+    vehicle.vehicleType === "CAR" ? parkingLot.carHourlyRate : parkingLot.motorbikeHourlyRate;
 
-  const { updatedRecord, updatedSlot, updatedPayment } =
-    await prisma.$transaction(async (tx) => {
-      const updatedRecord = await tx.parkingRecord.update({
-        where: { id },
-        data: {
-          checkOutTime,
-          status: "CHECKED_OUT",
-          actualCost,
-        },
-      });
+  let actualCost = Number(rate) * hours;
+  if (parkingRecord.monthlyPassId) {
+    actualCost = 0;
+  }
 
-      const updatedSlot = await tx.parkingSlot.update({
-        where: { id: parkingRecord.parkingSlotId },
-        data: { status: "AVAILABLE" },
-      });
-
-      let updatedPayment;
-
-      // Booking checkout: finalize existing booking payment if present, otherwise create fallback.
-      if (parkingRecord.bookingId) {
-        const existingBookingPayment = await tx.payment.findFirst({
-          where: { bookingId: parkingRecord.bookingId },
-        });
-
-        if (existingBookingPayment) {
-          // Update amount only — preserve the original payment method (CASH/VNPAY/etc.)
-          updatedPayment = await tx.payment.update({
-            where: { id: existingBookingPayment.id },
-            data: {
-              amount: actualCost,
-              status: "SUCCESS",
-            },
-          });
-        } else {
-          // Fallback: booking had no pre-created payment (edge case)
-          updatedPayment = await tx.payment.create({
-            data: {
-              userId,
-              bookingId: parkingRecord.bookingId,
-              amount: actualCost,
-              method: "CASH",
-              status: "SUCCESS",
-            },
-          });
-        }
-      } else {
-        // Walk-in checkout (no booking): attach/create payment on parking record.
-        const existingRecordPayment = await tx.payment.findFirst({
-          where: { parkingRecordId: id },
-        });
-
-        if (existingRecordPayment) {
-          // Update amount only — preserve the original payment method
-          updatedPayment = await tx.payment.update({
-            where: { id: existingRecordPayment.id },
-            data: {
-              amount: actualCost,
-              status: "SUCCESS",
-            },
-          });
-        } else {
-          // Walk-in with no pre-created payment: create one now
-          updatedPayment = await tx.payment.create({
-            data: {
-              userId,
-              parkingRecordId: id,
-              amount: actualCost,
-              method: "CASH",
-              status: "SUCCESS",
-            },
-          });
-        }
-      }
-
-      return { updatedRecord, updatedSlot, updatedPayment };
+  const { updatedRecord, updatedSlot, updatedPayment } = await prisma.$transaction(async (tx) => {
+    const updatedRecord = await tx.parkingRecord.update({
+      where: { id },
+      data: {
+        checkOutTime,
+        status: "CHECKED_OUT",
+        paymentStatus: "SUCCESS",
+        actualCost,
+      },
     });
+
+    const updatedSlot = await tx.parkingSlot.update({
+      where: { id: parkingRecord.parkingSlotId },
+      data: { status: "AVAILABLE" },
+    });
+
+    let updatedPayment;
+
+    // Booking checkout: finalize existing booking payment if present, otherwise create fallback.
+    if (parkingRecord.bookingId) {
+      const existingBookingPayment = await tx.payment.findFirst({
+        where: { bookingId: parkingRecord.bookingId },
+      });
+
+      if (existingBookingPayment) {
+        // Update amount only — preserve the original payment method (CASH/VNPAY/etc.)
+        updatedPayment = await tx.payment.update({
+          where: { id: existingBookingPayment.id },
+          data: {
+            amount: actualCost,
+            status: "SUCCESS",
+          },
+        });
+      } else {
+        // Fallback: booking had no pre-created payment (edge case)
+        updatedPayment = await tx.payment.create({
+          data: {
+            userId,
+            bookingId: parkingRecord.bookingId,
+            amount: actualCost,
+            method: "CASH",
+            status: "SUCCESS",
+          },
+        });
+      }
+    } else {
+      // Walk-in checkout (no booking): attach/create payment on parking record.
+      const existingRecordPayment = await tx.payment.findFirst({
+        where: { parkingRecordId: id },
+      });
+
+      if (existingRecordPayment) {
+        // Update amount only — preserve the original payment method
+        updatedPayment = await tx.payment.update({
+          where: { id: existingRecordPayment.id },
+          data: {
+            amount: actualCost,
+            status: "SUCCESS",
+          },
+        });
+      } else {
+        // Walk-in with no pre-created payment: create one now
+        updatedPayment = await tx.payment.create({
+          data: {
+            userId,
+            parkingRecordId: id,
+            amount: actualCost,
+            method: "CASH",
+            status: "SUCCESS",
+          },
+        });
+      }
+    }
+
+    return { updatedRecord, updatedSlot, updatedPayment };
+  });
 
   return res.status(200).json(
     formatSuccess("Check-out successful", {
