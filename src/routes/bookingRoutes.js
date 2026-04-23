@@ -32,7 +32,12 @@ router.get("/:id", authorize("ADMIN", "MANAGER"), getBookingById);
 
 // -- only admin --
 router.put("/:id/admin", authorize("ADMIN"), validate(updateBookingSchema), updateBookingById);
-router.put("/:id/status", authorize("ADMIN"), validate(updateBookingStatusSchema), updateBookingStatus);
+router.put(
+  "/:id/status",
+  authorize("ADMIN"),
+  validate(updateBookingStatusSchema),
+  updateBookingStatus,
+);
 router.delete("/:id/admin", authorize("ADMIN"), deleteBookingById);
 
 // -- personal --

@@ -2,7 +2,11 @@ import express from "express";
 import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
-import { bulkCreateParkingSlotSchema, updateSlotStatusSchema, updateParkingSlotSchema } from "../schemas/parkingSlotSchema.js";
+import {
+  bulkCreateParkingSlotSchema,
+  updateSlotStatusSchema,
+  updateParkingSlotSchema,
+} from "../schemas/parkingSlotSchema.js";
 import {
   createSlot,
   getByLotId,
