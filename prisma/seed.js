@@ -17,9 +17,8 @@ async function main() {
   await prisma.user.deleteMany({});
 
   // ===== CREATE USERS (1 of each role) =====
-  const [hashedAdmin, hashedManager, hashedUser] = await Promise.all([
+  const [hashedAdmin, hashedUser] = await Promise.all([
     bcrypt.hash("admin123", 10),
-    bcrypt.hash("manager123", 10),
     bcrypt.hash("user123", 10),
   ]);
 
@@ -33,17 +32,6 @@ async function main() {
     },
   });
   console.log("✅ Created admin:", admin.email);
-
-  const manager = await prisma.user.create({
-    data: {
-      email: "manager@parking.com",
-      password: hashedManager,
-      phone: "0902234567",
-      fullName: "Trần Thị Manager",
-      role: "MANAGER",
-    },
-  });
-  console.log("✅ Created manager:", manager.email);
 
   const user = await prisma.user.create({
     data: {
@@ -316,7 +304,7 @@ async function main() {
 
   // ===== DISPLAY SUMMARY =====
   console.log("📊 Summary:");
-  console.log(`   - Users: 3 (Admin, Manager, User)`);
+  console.log(`   - Users: 2 (Admin, User)`);
   console.log(`   - Parking Lot: 1`);
   console.log(`   - Parking Slots: ${slots.length}`);
   console.log(`   - Vehicles: 2`);
@@ -328,7 +316,7 @@ async function main() {
 
   console.log("🔐 Demo Credentials:");
   console.log("   Admin    → admin@parking.com / admin123");
-  console.log("   Manager  → manager@parking.com / manager123");
+
   console.log("   User     → user@parking.com / user123\n");
 }
 

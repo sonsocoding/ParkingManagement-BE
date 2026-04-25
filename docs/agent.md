@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-A **Smart Parking Management System** backend — REST API built with Node.js, Express 5, Prisma ORM, and PostgreSQL (NeonDB). Uses JWT (httpOnly cookie + Bearer header) for authentication and role-based access control (RBAC) with three roles: `ADMIN`, `MANAGER`, `USER`.
+A **Smart Parking Management System** backend — REST API built with Node.js, Express 5, Prisma ORM, and PostgreSQL (NeonDB). Uses JWT (httpOnly cookie + Bearer header) for authentication and role-based access control (RBAC) with two roles: `ADMIN`, `USER`.
 
 **Current state**: All modules are fully implemented — Auth, User, Vehicle, ParkingLot, ParkingSlot, Booking, ParkingRecord, Payment, and MonthlyPass.
 
@@ -166,8 +166,8 @@ router.use(authenticate);           // All routes require auth
 router.get("/me", getOwnResource);
 router.put("/me", updateOwnResource);
 
-// -- admin & manager (read access) --
-router.get("/", authorize("ADMIN", "MANAGER"), getAllResources);
+// -- admin (read access) --
+router.get("/", authorize("ADMIN"), getAllResources);
 
 // -- admin only (write access) --
 router.post("/", authorize("ADMIN"), createResource);
@@ -251,7 +251,7 @@ User ──┬── Vehicle ──┬── ParkingRecord
 
 | Enum | Values |
 |---|---|
-| `UserRole` | `ADMIN`, `MANAGER`, `USER` |
+| `UserRole` | `ADMIN`, `USER` |
 | `VehicleType` | `CAR`, `MOTORBIKE` |
 | `SlotStatus` | `AVAILABLE`, `OCCUPIED`, `RESERVED`, `MAINTENANCE` |
 | `BookingStatus` | `PENDING_PAYMENT`, `CONFIRMED`, `COMPLETED`, `CANCELLED` |
@@ -308,5 +308,4 @@ All modules are complete:
 - Seed the DB before testing: `npm run seed`
 - Demo credentials:
   - Admin: `admin@parking.com` / `admin123`
-  - Manager: `manager@parking.com` / `manager123`
   - User: `user@parking.com` / `user123`

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const roleEnum = z.enum(["ADMIN", "MANAGER", "USER"]);
+const roleEnum = z.enum(["ADMIN", "USER"]);
 
 export const updateOwnProfileSchema = z.object({
   body: z.object({

@@ -18,7 +18,7 @@ backend/
 │   │
 │   ├── middleware/
 │   │   ├── authenticate.js        # JWT verification → attaches req.user { id, role }
-│   │   ├── authorize.js           # Role-based gating: authorize("ADMIN", "MANAGER")
+│   │   ├── authorize.js           # Role-based gating: authorize("ADMIN")
 │   │   ├── errorHandler.js        # Global error handler — maps Prisma errors to HTTP codes
 │   │   └── validate.js            # Zod request body validation middleware
 │   │
@@ -78,7 +78,7 @@ backend/
 
 | Model           | Status    | Key Fields                                                                                        |
 | --------------- | --------- | -------------------------------------------------------------------------------------------------- |
-| `User`          | ✅ Active | email, password, fullName, phone, role (ADMIN/MANAGER/USER)                                        |
+| `User`          | ✅ Active | email, password, fullName, phone, role (ADMIN/USER)                                        |
 | `Vehicle`       | ✅ Active | plateNumber (unique), vehicleType (CAR/MOTORBIKE), color, → User                                   |
 | `ParkingLot`    | ✅ Active | name, address, totalSlots, lotType, zones (JSON), carHourlyRate, motorbikeHourlyRate               |
 | `ParkingSlot`   | ✅ Active | zoneId, slotNumber, vehicleType, status (AVAILABLE/OCCUPIED/RESERVED/MAINTENANCE)                  |
@@ -99,7 +99,7 @@ backend/
 | GET | `/api/users/me` | Any | Get own profile |
 | PUT | `/api/users/me` | Any | Update own profile |
 | DELETE | `/api/users/me` | Any | Delete own account |
-| GET | `/api/users` | Admin/Manager | List all users |
+| GET | `/api/users` | Admin | List all users |
 | POST | `/api/users` | Admin | Create user |
 | PUT | `/api/users/:id` | Admin | Update any user |
 | DELETE | `/api/users/:id` | Admin | Delete any user |
@@ -107,8 +107,8 @@ backend/
 | POST | `/api/vehicles` | Any | Add vehicle |
 | PUT | `/api/vehicles/:id` | Any (owner) | Update own vehicle |
 | DELETE | `/api/vehicles/:id` | Any (owner) | Delete own vehicle |
-| GET | `/api/vehicles` | Admin/Manager | List all vehicles |
-| GET | `/api/vehicles/:id` | Admin/Manager | Get vehicle by ID |
+| GET | `/api/vehicles` | Admin | List all vehicles |
+| GET | `/api/vehicles/:id` | Admin | Get vehicle by ID |
 | PUT | `/api/vehicles/:id/admin` | Admin | Edit any vehicle |
 | DELETE | `/api/vehicles/:id/admin` | Admin | Delete any vehicle |
 | GET | `/api/parking-lots` | Any | List parking lots |
@@ -125,27 +125,27 @@ backend/
 | GET | `/api/bookings/me` | User | Get own bookings |
 | PUT | `/api/bookings/:id` | User (owner) | Update own booking |
 | DELETE | `/api/bookings/:id` | User (owner) | Cancel own booking |
-| GET | `/api/bookings` | Admin/Manager | List all bookings |
-| GET | `/api/bookings/:id` | Admin/Manager | Get booking by ID |
+| GET | `/api/bookings` | Admin | List all bookings |
+| GET | `/api/bookings/:id` | Admin | Get booking by ID |
 | PUT | `/api/bookings/:id/admin` | Admin | Edit any booking |
 | PUT | `/api/bookings/:id/status` | Admin | Change booking status |
 | DELETE | `/api/bookings/:id/admin` | Admin | Delete booking |
 | POST | `/api/records/checkin` | User | Check in vehicle |
 | PUT | `/api/records/:id/checkout` | User (owner) | Check out vehicle |
 | GET | `/api/records/me` | User | Get own parking records |
-| GET | `/api/records` | Admin/Manager | List all records |
+| GET | `/api/records` | Admin | List all records |
 | GET | `/api/payments/vnpay-ipn` | Public | VNPay IPN callback |
 | GET | `/api/payments/me` | User | Get own payments |
-| GET | `/api/payments` | Admin/Manager | List all payments |
-| GET | `/api/payments/user/:userId` | Admin/Manager | Get payments by user |
-| GET | `/api/payments/:id` | Admin/Manager | Get payment by ID |
+| GET | `/api/payments` | Admin | List all payments |
+| GET | `/api/payments/user/:userId` | Admin | Get payments by user |
+| GET | `/api/payments/:id` | Admin | Get payment by ID |
 | POST | `/api/payments` | Admin | Manual payment entry |
 | PUT | `/api/payments/:id/status` | Admin | Update payment status |
 | POST | `/api/monthly-passes` | User | Register a monthly pass |
 | GET | `/api/monthly-passes/me` | User | Get own monthly passes |
 | PUT | `/api/monthly-passes/:id/renew` | User (owner) | Renew own pass |
 | DELETE | `/api/monthly-passes/:id` | User (owner) | Cancel own pass |
-| GET | `/api/monthly-passes` | Admin/Manager | List all passes |
+| GET | `/api/monthly-passes` | Admin | List all passes |
 | PUT | `/api/monthly-passes/:id/status` | Admin | Override pass status |
 | PUT | `/api/monthly-passes/price` | Admin | Set system-wide pass prices |
 

@@ -20,15 +20,15 @@ import {
 const router = express.Router();
 router.use(authenticate);
 
-// -- admin & manager --
-router.get("/", authorize("ADMIN", "MANAGER"), getAllUsers);
+// -- admin --
+router.get("/", authorize("ADMIN"), getAllUsers);
 
 // -- personal --
 router.get("/me", getOwnProfile);
 router.put("/me", validate(updateOwnProfileSchema), updateOwnProfile);
 router.delete("/me", deleteOwnProfile);
 
-// -- only admin --
+// -- admin --
 router.post("/", authorize("ADMIN"), validate(createUserSchema), createUser);
 router.put("/:id", authorize("ADMIN"), validate(updateUserSchema), updateUser);
 router.delete("/:id", authorize("ADMIN"), deleteUserById);

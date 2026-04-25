@@ -27,7 +27,7 @@ const swaggerDocs = {
           email: { type: "string" },
           fullName: { type: "string" },
           phone: { type: "string", nullable: true },
-          role: { type: "string", enum: ["ADMIN", "MANAGER", "USER"] },
+          role: { type: "string", enum: ["ADMIN", "USER"] },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
         },
@@ -78,7 +78,10 @@ const swaggerDocs = {
           startTime: { type: "string", format: "date-time" },
           endTime: { type: "string", format: "date-time" },
           estimatedCost: { type: "number" },
-          status: { type: "string", enum: ["PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"] },
+          status: {
+            type: "string",
+            enum: ["PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"],
+          },
         },
       },
       ParkingRecord: {
@@ -202,7 +205,7 @@ const swaggerDocs = {
     "/api/users": {
       get: {
         tags: ["Users"],
-        summary: "Get all users (Admin/Manager only)",
+        summary: "Get all users (Admin only)",
         security: [{ cookieAuth: [] }],
         responses: {
           200: { description: "List of users" },
@@ -223,7 +226,7 @@ const swaggerDocs = {
                   email: { type: "string" },
                   password: { type: "string" },
                   phoneNumber: { type: "string" },
-                  role: { type: "string", enum: ["USER", "ADMIN", "MANAGER"] },
+                  role: { type: "string", enum: ["USER", "ADMIN"] },
                 },
               },
             },
@@ -312,9 +315,7 @@ const swaggerDocs = {
         tags: ["Parking Lots"],
         summary: "Get parking lot by ID",
         security: [{ cookieAuth: [] }],
-        parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
-        ],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
         responses: {
           200: { description: "Parking lot details" },
         },
@@ -323,9 +324,7 @@ const swaggerDocs = {
         tags: ["Parking Lots"],
         summary: "Update parking lot (Admin only)",
         security: [{ cookieAuth: [] }],
-        parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
-        ],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
         requestBody: {
           content: {
             "application/json": {
@@ -348,9 +347,7 @@ const swaggerDocs = {
         tags: ["Parking Lots"],
         summary: "Delete parking lot (Admin only)",
         security: [{ cookieAuth: [] }],
-        parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
-        ],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
         responses: {
           200: { description: "Parking lot deleted" },
         },
@@ -359,7 +356,7 @@ const swaggerDocs = {
     "/api/bookings": {
       get: {
         tags: ["Bookings"],
-        summary: "Get all bookings (Admin/Manager only)",
+        summary: "Get all bookings (Admin only)",
         security: [{ cookieAuth: [] }],
         responses: {
           200: { description: "List of all bookings" },

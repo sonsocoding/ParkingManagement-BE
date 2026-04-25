@@ -162,7 +162,7 @@ const cancelOwnMonthlyPass = asyncHandler(async (req, res) => {
   );
 });
 
-// ─── ADMIN + MANAGER ─────────────────────────────────────────────────────────
+// ─── ADMIN ─────────────────────────────────────────────────────────
 
 // GET /api/monthly-passes
 const getAllMonthlyPasses = asyncHandler(async (req, res) => {

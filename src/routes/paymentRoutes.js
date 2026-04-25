@@ -22,12 +22,11 @@ router.use(authenticate);
 
 router.get("/me", authorize("USER"), getOwnPayment);
 
-// admin & manager
-router.get("/", authorize("ADMIN", "MANAGER"), getAllPayment);
-router.get("/user/:userId", authorize("ADMIN", "MANAGER"), getPaymentByUserId);
-router.get("/:id", authorize("ADMIN", "MANAGER"), getPaymentById);
+// admin
+router.get("/", authorize("ADMIN"), getAllPayment);
+router.get("/user/:userId", authorize("ADMIN"), getPaymentByUserId);
+router.get("/:id", authorize("ADMIN"), getPaymentById);
 
-// admin only
 // payment is automatically created when user booking or buy monthly pass
 // manual cash payment entry is created by admin
 router.post("/", authorize("ADMIN"), validate(createPaymentSchema), createPayment);

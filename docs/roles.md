@@ -1,42 +1,42 @@
 # RBAC — Role-Based Access Control
 
-Three roles: **ADMIN**, **MANAGER**, **USER**.
+Two roles: **ADMIN**, **USER**.
 
 ---
 
 ## Quick Reference
 
-| Resource | Action | USER | MANAGER | ADMIN |
-|---|---|---|---|---|
-| **User** | View own profile | ✅ | ✅ | ✅ |
-| | Edit own profile | ✅ | ✅ | ✅ |
-| | Delete own account | ✅ | ✅ | ✅ |
-| | View all users | ❌ | ✅ (read-only) | ✅ |
-| | Create/Edit/Delete any user | ❌ | ❌ | ✅ |
-| **Vehicle** | CRUD own vehicles | ✅ | ✅ | ✅ |
-| | View all vehicles | ❌ | ✅ (read-only) | ✅ |
-| | Edit/Delete any vehicle | ❌ | ❌ | ✅ |
-| **ParkingLot** | Search & view | ✅ | ✅ | ✅ |
-| | Create/Edit/Delete | ❌ | ❌ | ✅ |
-| **ParkingSlot** | View availability | ✅ | ✅ | ✅ |
-| | Manage slots | ❌ | ❌ | ✅ |
-| **Booking** | Create own bookings | ✅ | ❌ | ❌ |
-| | View own bookings | ✅ | ❌ | ✅ |
-| | Update/Cancel own bookings | ✅ | ❌ | ❌ |
-| | View all bookings | ❌ | ✅ (read-only) | ✅ |
-| | Modify/Cancel/Delete any booking | ❌ | ❌ | ✅ |
-| | Change booking status | ❌ | ❌ | ✅ |
-| **ParkingRecord** | Check in / Check out own vehicle | ✅ | ❌ | ❌ |
-| | View own records | ✅ | ❌ | ✅ |
-| | View all records | ❌ | ✅ (read-only) | ✅ |
-| **Payment** | View own payments | ✅ | ❌ | ✅ |
-| | View all payments | ❌ | ✅ (read-only) | ✅ |
-| | Manual entry / Override / Refund | ❌ | ❌ | ✅ |
-| **MonthlyPass** | Register/Renew/Cancel own | ✅ | ❌ | ✅ |
-| | View all passes | ❌ | ✅ (read-only) | ✅ |
-| | Approve/Terminate any | ❌ | ❌ | ✅ |
-| **AdminLog** | View audit logs | ❌ | ✅ (read-only) | ✅ |
-| **Dashboard** | Revenue & analytics | ❌ | ✅ | ✅ |
+| Resource | Action | USER | ADMIN |
+|---|---|---|---|
+| **User** | View own profile | ✅ | ✅ |
+| | Edit own profile | ✅ | ✅ |
+| | Delete own account | ✅ | ✅ |
+| | View all users | ❌ | ✅ |
+| | Create/Edit/Delete any user | ❌ | ✅ |
+| **Vehicle** | CRUD own vehicles | ✅ | ✅ |
+| | View all vehicles | ❌ | ✅ |
+| | Edit/Delete any vehicle | ❌ | ✅ |
+| **ParkingLot** | Search & view | ✅ | ✅ |
+| | Create/Edit/Delete | ❌ | ✅ |
+| **ParkingSlot** | View availability | ✅ | ✅ |
+| | Manage slots | ❌ | ✅ |
+| **Booking** | Create own bookings | ✅ | ❌ |
+| | View own bookings | ✅ | ✅ |
+| | Update/Cancel own bookings | ✅ | ❌ |
+| | View all bookings | ❌ | ✅ |
+| | Modify/Cancel/Delete any booking | ❌ | ✅ |
+| | Change booking status | ❌ | ✅ |
+| **ParkingRecord** | Check in / Check out own vehicle | ✅ | ❌ |
+| | View own records | ✅ | ✅ |
+| | View all records | ❌ | ✅ |
+| **Payment** | View own payments | ✅ | ✅ |
+| | View all payments | ❌ | ✅ |
+| | Manual entry / Override / Refund | ❌ | ✅ |
+| **MonthlyPass** | Register/Renew/Cancel own | ✅ | ✅ |
+| | View all passes | ❌ | ✅ |
+| | Approve/Terminate any | ❌ | ✅ |
+| **AdminLog** | View audit logs | ❌ | ✅ |
+| **Dashboard** | Revenue & analytics | ❌ | ✅ |
 
 ---
 
@@ -44,7 +44,7 @@ Three roles: **ADMIN**, **MANAGER**, **USER**.
 
 **USER** — Can only access and modify **own** data. No cross-user visibility. Can create bookings, check in/out their own vehicles, and view their own payments.
 
-**MANAGER** — **Read-only** access to all data for reporting and analytics. Cannot create, update, or delete resources belonging to other users. Cannot create bookings or check in vehicles.
+
 
 **ADMIN** — Full system control. Can CRUD all resources and manage the infrastructure.
 
@@ -93,16 +93,16 @@ POST   /api/records/checkin           → authenticate + authorize("USER")
 PUT    /api/records/:id/checkout      → authenticate + authorize("USER") + ownership check
 GET    /api/records/me                → authenticate + authorize("USER")
 
-# ADMIN & MANAGER (read-only for manager)
-GET /api/users                        → authenticate + authorize("ADMIN", "MANAGER")
-GET /api/vehicles                     → authenticate + authorize("ADMIN", "MANAGER")
-GET /api/vehicles/:id                 → authenticate + authorize("ADMIN", "MANAGER")
-GET /api/bookings                     → authenticate + authorize("ADMIN", "MANAGER")
-GET /api/bookings/:id                 → authenticate + authorize("ADMIN", "MANAGER")
-GET /api/records                      → authenticate + authorize("ADMIN", "MANAGER")
-GET /api/payments                     → authenticate + authorize("ADMIN", "MANAGER")
-GET /api/payments/:id                 → authenticate + authorize("ADMIN", "MANAGER")
-GET /api/payments/user/:userId        → authenticate + authorize("ADMIN", "MANAGER")
+# ADMIN
+GET /api/users                        → authenticate + authorize("ADMIN")
+GET /api/vehicles                     → authenticate + authorize("ADMIN")
+GET /api/vehicles/:id                 → authenticate + authorize("ADMIN")
+GET /api/bookings                     → authenticate + authorize("ADMIN")
+GET /api/bookings/:id                 → authenticate + authorize("ADMIN")
+GET /api/records                      → authenticate + authorize("ADMIN")
+GET /api/payments                     → authenticate + authorize("ADMIN")
+GET /api/payments/:id                 → authenticate + authorize("ADMIN")
+GET /api/payments/user/:userId        → authenticate + authorize("ADMIN")
 
 # ADMIN only (write access)
 POST   /api/users                     → authenticate + authorize("ADMIN")

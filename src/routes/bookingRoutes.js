@@ -26,11 +26,9 @@ router.use(authenticate);
 router.post("/", authorize("USER"), validate(createBookingSchema), createBooking);
 router.get("/me", authorize("USER"), getOwnBooking);
 
-// -- admin & manager --
-router.get("/", authorize("ADMIN", "MANAGER"), getAllBooking);
-router.get("/:id", authorize("ADMIN", "MANAGER"), getBookingById);
-
-// -- only admin --
+// -- admin --
+router.get("/", authorize("ADMIN"), getAllBooking);
+router.get("/:id", authorize("ADMIN"), getBookingById);
 router.put("/:id/admin", authorize("ADMIN"), validate(updateBookingSchema), updateBookingById);
 router.put(
   "/:id/status",

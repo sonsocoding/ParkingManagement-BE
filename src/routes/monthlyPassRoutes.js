@@ -24,16 +24,14 @@ router.use(authenticate);
 // -- admin only (must be before /:id routes to prevent route shadowing) --
 router.put("/price", authorize("ADMIN"), validate(updatePassPriceSchema), updatePassPrice);
 
-// -- personal (USER) --
+// -- personal --
 router.post("/", authorize("USER"), validate(registerPassSchema), registerMonthlyPass);
 router.get("/me", authorize("USER"), getOwnMonthlyPasses);
 router.put("/:id/renew", authorize("USER"), validate(renewPassSchema), renewMonthlyPass);
 router.delete("/:id", authorize("USER"), cancelOwnMonthlyPass);
 
-// -- admin & manager --
-router.get("/", authorize("ADMIN", "MANAGER"), getAllMonthlyPasses);
-
-// -- admin only --
+// -- admin --
+router.get("/", authorize("ADMIN"), getAllMonthlyPasses);
 router.put("/:id/status", authorize("ADMIN"), validate(updatePassStatusSchema), updatePassStatus);
 
 export default router;

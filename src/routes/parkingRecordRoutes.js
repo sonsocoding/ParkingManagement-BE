@@ -17,6 +17,6 @@ router.post("/checkin", authorize("USER"), validate(checkInSchema), checkIn);
 router.put("/:id/checkout", authorize("USER"), validate(checkOutSchema), checkOut);
 
 router.get("/me", authorize("USER"), getOwnRecord);
-router.get("/", authorize("ADMIN", "MANAGER"), getAllRecord); // filter by user, vehicle, lot, etc in the future
+router.get("/", authorize("ADMIN"), getAllRecord); // filter by user, vehicle, lot, etc in the future
 
 export default router;

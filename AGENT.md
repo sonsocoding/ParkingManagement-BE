@@ -37,7 +37,6 @@ There are three roles with different access levels:
 | Role | Who | Access |
 |---|---|---|
 | `USER` | Regular customer | Own data only |
-| `MANAGER` | Staff | Read-only on most resources |
 | `ADMIN` | System admin | Full CRUD everywhere |
 
 Use `GET /api/auth/me` on app load to get the current user's role and conditionally render UI.
@@ -82,7 +81,7 @@ Always check `response.status` field (not HTTP status code alone) to determine s
 | GET | `/me` | Any | Own profile |
 | PUT | `/me` | Any | Update own profile |
 | DELETE | `/me` | Any | Delete own account |
-| GET | `/` | ADMIN, MANAGER | All users |
+| GET | `/` | ADMIN | All users |
 | POST | `/` | ADMIN | Create user (admin-created) |
 | PUT | `/:id` | ADMIN | Update any user |
 | DELETE | `/:id` | ADMIN | Delete any user |
@@ -95,8 +94,8 @@ Always check `response.status` field (not HTTP status code alone) to determine s
 |---|---|---|---|
 | POST | `/` | Any | `{ vehicleType: "CAR"/"MOTORBIKE", plateNumber, color? }` |
 | GET | `/me` | Any | Own vehicles |
-| GET | `/` | ADMIN, MANAGER | All vehicles |
-| GET | `/:id` | ADMIN, MANAGER | Single vehicle |
+| GET | `/` | ADMIN | All vehicles |
+| GET | `/:id` | ADMIN | Single vehicle |
 | PUT | `/:id` | Any (owner) | Update own vehicle |
 | DELETE | `/:id` | Any (owner) | Delete own vehicle |
 | PUT | `/:id/admin` | ADMIN | Admin override update |
@@ -140,8 +139,8 @@ Always check `response.status` field (not HTTP status code alone) to determine s
 | GET | `/me` | USER | Own bookings |
 | DELETE | `/:id` | USER | Cancel own booking |
 | PUT | `/:id` | USER | Update own booking (time/slot) |
-| GET | `/` | ADMIN, MANAGER | All bookings |
-| GET | `/:id` | ADMIN, MANAGER | Single booking |
+| GET | `/` | ADMIN | All bookings |
+| GET | `/:id` | ADMIN | Single booking |
 | PUT | `/:id/admin` | ADMIN | Admin update |
 | PUT | `/:id/status` | ADMIN | Force status change |
 | DELETE | `/:id/admin` | ADMIN | Delete (only COMPLETED/CANCELLED) |
@@ -180,7 +179,7 @@ Always check `response.status` field (not HTTP status code alone) to determine s
 | POST | `/checkin` | USER | Check in (walk-in or booked) |
 | PUT | `/:id/checkout` | USER | Check out + cost calculated |
 | GET | `/me` | USER | Own parking history |
-| GET | `/` | ADMIN, MANAGER | All records |
+| GET | `/` | ADMIN | All records |
 
 **Check-in body:**
 ```json
@@ -216,9 +215,9 @@ Always check `response.status` field (not HTTP status code alone) to determine s
 | Method | Route | Role | Notes |
 |---|---|---|---|
 | GET | `/me` | USER | Own payments |
-| GET | `/` | ADMIN, MANAGER | All payments |
-| GET | `/user/:userId` | ADMIN, MANAGER | Payments by user |
-| GET | `/:id` | ADMIN, MANAGER | Single payment |
+| GET | `/` | ADMIN | All payments |
+| GET | `/user/:userId` | ADMIN | Payments by user |
+| GET | `/:id` | ADMIN | Single payment |
 | POST | `/` | ADMIN | Manual payment entry |
 | PUT | `/:id/status` | ADMIN | `{ status: "SUCCESS"/"FAILED"/"REFUNDED" }` |
 | GET | `/vnpay-ipn` | 🌐 PUBLIC | VNPay webhook (no auth) |
@@ -239,7 +238,7 @@ Always check `response.status` field (not HTTP status code alone) to determine s
 | GET | `/me` | USER | Own passes |
 | PUT | `/:id/renew` | USER | `{ endDate }` |
 | DELETE | `/:id` | USER | Cancel own pass |
-| GET | `/` | ADMIN, MANAGER | All passes |
+| GET | `/` | ADMIN | All passes |
 | PUT | `/price` | ADMIN | `{ vehicleType, price }` |
 | PUT | `/:id/status` | ADMIN | `{ status }` |
 
@@ -251,7 +250,7 @@ Always check `response.status` field (not HTTP status code alone) to determine s
 
 ### User
 ```ts
-{ id, email, fullName, phone, role: "ADMIN"|"MANAGER"|"USER", createdAt }
+{ id, email, fullName, phone, role: "ADMIN"|"USER", createdAt }
 ```
 
 ### Vehicle

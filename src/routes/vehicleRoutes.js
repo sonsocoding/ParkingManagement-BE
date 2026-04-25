@@ -22,16 +22,14 @@ router.use(authenticate);
 router.post("/", validate(createVehicleSchema), createVehicle);
 router.get("/me", getOwnVehicle);
 
-// -- admin & manager --
-router.get("/", authorize("ADMIN", "MANAGER"), getAllVehicles);
+// -- admin --
+router.get("/", authorize("ADMIN"), getAllVehicles);
 
 // -- DYNAMIC ROUTES (Contains parameters like :id) --
-// -- only admin --
+// -- admin --
 router.put("/:id/admin", authorize("ADMIN"), validate(updateVehicleSchema), updateVehicleById);
 router.delete("/:id/admin", authorize("ADMIN"), deleteVehicleById);
-
-// -- admin & manager --
-router.get("/:id", authorize("ADMIN", "MANAGER"), getVehicleById);
+router.get("/:id", authorize("ADMIN"), getVehicleById);
 
 // -- personal --
 router.put("/:id", validate(updateVehicleSchema), updateOwnVehicle);
