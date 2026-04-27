@@ -69,7 +69,7 @@ const registerMonthlyPass = asyncHandler(async (req, res) => {
 const getOwnMonthlyPasses = asyncHandler(async (req, res) => {
   const userId = req.user.id;
 
-  const passes = await prisma.monthlyPass.findMany({
+  const monthlyPasses = await prisma.monthlyPass.findMany({
     where: { userId },
     include: {
       payment: { select: { amount: true, method: true, status: true } },
@@ -77,7 +77,7 @@ const getOwnMonthlyPasses = asyncHandler(async (req, res) => {
     orderBy: { createdAt: "desc" },
   });
 
-  return res.status(200).json(formatSuccess({ passes }));
+  return res.status(200).json(formatSuccess({ monthlyPasses }));
 });
 
 // PUT /api/monthly-passes/:id/renew
@@ -87,27 +87,27 @@ const renewMonthlyPass = asyncHandler(async (req, res) => {
   const { months } = req.body;
   const userId = req.user.id;
 
-  const pass = await prisma.monthlyPass.findUnique({ where: { id } });
-  if (!pass) {
+  const monthlyPass = await prisma.monthlyPass.findUnique({ where: { id } });
+  if (!monthlyPass) {
     return res.status(404).json(formatError("Monthly pass not found"));
   }
-  if (pass.userId !== userId) {
+  if (monthlyPass.userId !== userId) {
     return res.status(403).json(formatError("This is not your pass"));
   }
-  if (pass.status === "CANCELLED") {
+  if (monthlyPass.status === "CANCELLED") {
     return res.status(400).json(formatError("Cannot renew a cancelled pass"));
   }
 
-  const pricePerMonth = PASS_PRICES[pass.vehicleType];
+  const pricePerMonth = PASS_PRICES[monthlyPass.vehicleType];
   const extensionPrice = pricePerMonth * months;
 
   // Extend from current endDate (or now if expired)
-  const base = pass.endDate > new Date() ? new Date(pass.endDate) : new Date();
+  const base = monthlyPass.endDate > new Date() ? new Date(monthlyPass.endDate) : new Date();
   const newEndDate = new Date(base);
   newEndDate.setMonth(newEndDate.getMonth() + months);
 
-  const { updatedPass, payment } = await prisma.$transaction(async (tx) => {
-    const updatedPass = await tx.monthlyPass.update({
+  const { monthlyPass: renewedMonthlyPass, payment } = await prisma.$transaction(async (tx) => {
+    const monthlyPass = await tx.monthlyPass.update({
       where: { id },
       data: {
         endDate: newEndDate,
@@ -128,11 +128,11 @@ const renewMonthlyPass = asyncHandler(async (req, res) => {
       },
     });
 
-    return { updatedPass, payment };
+    return { monthlyPass, payment };
   });
 
   return res.status(200).json(
-    formatSuccess({ pass: updatedPass, payment }, "Monthly pass renewed successfully")
+    formatSuccess({ monthlyPass: renewedMonthlyPass, payment }, "Monthly pass renewed successfully")
   );
 });
 
@@ -141,24 +141,24 @@ const cancelOwnMonthlyPass = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
 
-  const pass = await prisma.monthlyPass.findUnique({ where: { id } });
-  if (!pass) {
+  const monthlyPass = await prisma.monthlyPass.findUnique({ where: { id } });
+  if (!monthlyPass) {
     return res.status(404).json(formatError("Monthly pass not found"));
   }
-  if (pass.userId !== userId) {
+  if (monthlyPass.userId !== userId) {
     return res.status(403).json(formatError("This is not your pass"));
   }
-  if (pass.status !== "ACTIVE") {
-    return res.status(400).json(formatError(`Cannot cancel a pass with status ${pass.status}`));
+  if (monthlyPass.status !== "ACTIVE") {
+    return res.status(400).json(formatError(`Cannot cancel a pass with status ${monthlyPass.status}`));
   }
 
-  const updatedPass = await prisma.monthlyPass.update({
+  const cancelledMonthlyPass = await prisma.monthlyPass.update({
     where: { id },
     data: { status: "CANCELLED" },
   });
 
   return res.status(200).json(
-    formatSuccess({ pass: updatedPass }, "Monthly pass cancelled")
+    formatSuccess({ monthlyPass: cancelledMonthlyPass }, "Monthly pass cancelled")
   );
 });
 
@@ -166,7 +166,7 @@ const cancelOwnMonthlyPass = asyncHandler(async (req, res) => {
 
 // GET /api/monthly-passes
 const getAllMonthlyPasses = asyncHandler(async (req, res) => {
-  const passes = await prisma.monthlyPass.findMany({
+  const monthlyPasses = await prisma.monthlyPass.findMany({
     include: {
       user: { select: { id: true, fullName: true, email: true } },
       payment: { select: { amount: true, method: true, status: true } },
@@ -174,7 +174,7 @@ const getAllMonthlyPasses = asyncHandler(async (req, res) => {
     orderBy: { createdAt: "desc" },
   });
 
-  return res.status(200).json(formatSuccess({ passes }));
+  return res.status(200).json(formatSuccess({ monthlyPasses }));
 });
 
 // ─── ADMIN ONLY ───────────────────────────────────────────────────────────────
@@ -184,18 +184,18 @@ const updatePassStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  const pass = await prisma.monthlyPass.findUnique({ where: { id } });
-  if (!pass) {
+  const monthlyPass = await prisma.monthlyPass.findUnique({ where: { id } });
+  if (!monthlyPass) {
     return res.status(404).json(formatError("Monthly pass not found"));
   }
 
-  const updatedPass = await prisma.monthlyPass.update({
+  const monthlyPassResult = await prisma.monthlyPass.update({
     where: { id },
     data: { status },
   });
 
   return res.status(200).json(
-    formatSuccess({ pass: updatedPass }, `Pass status updated to ${status}`)
+    formatSuccess({ monthlyPass: monthlyPassResult }, `Pass status updated to ${status}`)
   );
 });
 

@@ -2,6 +2,51 @@ import { prisma } from "../config/db.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatSuccess, formatError } from "../utils/formatResponse.js";
 
+const parkingRecordInclude = {
+  vehicle: {
+    select: {
+      id: true,
+      plateNumber: true,
+      vehicleType: true,
+      color: true,
+    },
+  },
+  parkingLot: {
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      lotType: true,
+    },
+  },
+  parkingSlot: {
+    select: {
+      id: true,
+      slotNumber: true,
+      zoneId: true,
+      vehicleType: true,
+      status: true,
+    },
+  },
+  monthlyPass: {
+    select: {
+      id: true,
+      vehicleType: true,
+      status: true,
+    },
+  },
+};
+
+const formatRecord = (record) => {
+  if (!record) return null;
+  return {
+    ...record,
+    slot: record.parkingSlot ?? record.slot ?? null,
+  };
+};
+
+const formatRecords = (records) => records.map(formatRecord);
+
 const checkIn = asyncHandler(async (req, res) => {
   const { vehicleId, parkingSlotId, parkingLotId, bookingId } = req.body;
   const userId = req.user.id;
@@ -164,7 +209,9 @@ const checkIn = asyncHandler(async (req, res) => {
   const parkingRecord = results[0];
   const updatedSlot = results[1];
 
-  return res.status(201).json(formatSuccess({ parkingRecord, updatedSlot }, "Check-in successful"));
+  return res.status(201).json(
+    formatSuccess({ parkingRecord, parkingSlot: updatedSlot }, "Check-in successful"),
+  );
 });
 
 const checkOut = asyncHandler(async (req, res) => {
@@ -310,11 +357,14 @@ const checkOut = asyncHandler(async (req, res) => {
   });
 
   return res.status(200).json(
-    formatSuccess("Check-out successful", {
-      updatedRecord,
-      updatedSlot,
-      updatedPayment,
-    }),
+    formatSuccess(
+      {
+      parkingRecord: updatedRecord,
+      parkingSlot: updatedSlot,
+      payment: updatedPayment,
+    },
+    "Check-out successful",
+  ),
   );
 });
 
@@ -324,15 +374,18 @@ const getOwnRecord = asyncHandler(async (req, res) => {
   const parkingRecords = await prisma.parkingRecord.findMany({
     where: { userId },
     omit: { userId: true },
+    include: parkingRecordInclude,
   });
 
-  return res.status(200).json(formatSuccess({ parkingRecords }));
+  return res.status(200).json(formatSuccess({ parkingRecords: formatRecords(parkingRecords) }));
 });
 
 const getAllRecord = asyncHandler(async (req, res) => {
-  const parkingRecords = await prisma.parkingRecord.findMany();
+  const parkingRecords = await prisma.parkingRecord.findMany({
+    include: parkingRecordInclude,
+  });
 
-  return res.status(200).json(formatSuccess({ parkingRecords }));
+  return res.status(200).json(formatSuccess({ parkingRecords: formatRecords(parkingRecords) }));
 });
 
 export { checkIn, checkOut, getOwnRecord, getAllRecord };

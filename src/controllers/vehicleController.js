@@ -6,15 +6,15 @@ const createVehicle = asyncHandler(async (req, res) => {
   const { plateNumber, vehicleType, color } = req.body;
   const userId = req.user.id;
 
-  const vehicle = await prisma.vehicle.findUnique({
+  const existingVehicle = await prisma.vehicle.findUnique({
     where: { plateNumber },
   });
 
-  if (vehicle) {
+  if (existingVehicle) {
     return res.status(409).json(formatError("Plate number already exists"));
   }
 
-  const newVehicle = await prisma.vehicle.create({
+  const vehicle = await prisma.vehicle.create({
     data: {
       plateNumber,
       vehicleType,
@@ -23,17 +23,17 @@ const createVehicle = asyncHandler(async (req, res) => {
     },
   });
 
-  return res.status(201).json(formatSuccess({ newVehicle }));
+  return res.status(201).json(formatSuccess({ vehicle }));
 });
 
 const getOwnVehicle = asyncHandler(async (req, res) => {
   const userId = req.user.id;
 
-  const vehicle = await prisma.vehicle.findMany({
+  const vehicles = await prisma.vehicle.findMany({
     where: { userId },
   });
 
-  return res.status(200).json(formatSuccess({ vehicle }));
+  return res.status(200).json(formatSuccess({ vehicles }));
 });
 
 const updateOwnVehicle = asyncHandler(async (req, res) => {
@@ -41,19 +41,19 @@ const updateOwnVehicle = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const id = req.params.id;
 
-  const vehicle = await prisma.vehicle.findUnique({
+  const existingVehicle = await prisma.vehicle.findUnique({
     where: { id },
   });
 
-  if (!vehicle) {
+  if (!existingVehicle) {
     return res.status(404).json(formatError("Vehicle not found"));
   }
 
-  if (vehicle.userId !== userId) {
+  if (existingVehicle.userId !== userId) {
     return res.status(403).json(formatError("Forbidden: You are not the owner of this vehicle"));
   }
 
-  const updatedVehicle = await prisma.vehicle.update({
+  const vehicle = await prisma.vehicle.update({
     where: { id },
     data: {
       plateNumber,
@@ -62,22 +62,22 @@ const updateOwnVehicle = asyncHandler(async (req, res) => {
     },
   });
 
-  return res.status(200).json(formatSuccess({ updatedVehicle }));
+  return res.status(200).json(formatSuccess({ vehicle }));
 });
 
 const deleteOwnVehicle = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const id = req.params.id;
 
-  const vehicle = await prisma.vehicle.findUnique({
+  const existingVehicle = await prisma.vehicle.findUnique({
     where: { id },
   });
 
-  if (!vehicle) {
+  if (!existingVehicle) {
     return res.status(404).json(formatError("Vehicle not found"));
   }
 
-  if (vehicle.userId !== userId) {
+  if (existingVehicle.userId !== userId) {
     return res.status(403).json(formatError("Forbidden: You are not the owner of this vehicle"));
   }
 
@@ -102,11 +102,11 @@ const deleteOwnVehicle = asyncHandler(async (req, res) => {
     return res.status(400).json(formatError("Cannot delete vehicle because it is currently checked in at a parking lot."));
   }
 
-  const deletedVehicle = await prisma.vehicle.delete({
+  await prisma.vehicle.delete({
     where: { id },
   });
 
-  return res.status(200).json(formatSuccess({ deletedVehicle }));
+  return res.status(200).json(formatSuccess({ vehicle }));
 });
 
 const getAllVehicles = asyncHandler(async (req, res) => {
@@ -133,15 +133,15 @@ const updateVehicleById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { plateNumber, vehicleType, color } = req.body;
 
-  const vehicle = await prisma.vehicle.findUnique({
+  const existingVehicle = await prisma.vehicle.findUnique({
     where: { id },
   });
 
-  if (!vehicle) {
+  if (!existingVehicle) {
     return res.status(404).json(formatError("Vehicle not found"));
   }
 
-  const updatedVehicle = await prisma.vehicle.update({
+  const vehicle = await prisma.vehicle.update({
     where: { id },
     data: {
       plateNumber,
@@ -150,7 +150,7 @@ const updateVehicleById = asyncHandler(async (req, res) => {
     },
   });
 
-  return res.status(200).json(formatSuccess({ updatedVehicle }));
+  return res.status(200).json(formatSuccess({ vehicle }));
 });
 
 const deleteVehicleById = asyncHandler(async (req, res) => {
@@ -185,11 +185,11 @@ const deleteVehicleById = asyncHandler(async (req, res) => {
     return res.status(400).json(formatError("Cannot delete vehicle because it is currently checked in at a parking lot."));
   }
 
-  const deletedVehicle = await prisma.vehicle.delete({
+  await prisma.vehicle.delete({
     where: { id },
   });
 
-  return res.status(200).json(formatSuccess({ deletedVehicle }));
+  return res.status(200).json(formatSuccess({ vehicle }));
 });
 
 export {

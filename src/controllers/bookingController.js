@@ -10,6 +10,56 @@ const VALID_TRANSITIONS = {
   CANCELLED: [], // terminal state
 };
 
+const bookingInclude = {
+  user: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      role: true,
+    },
+  },
+  vehicle: {
+    select: {
+      id: true,
+      plateNumber: true,
+      vehicleType: true,
+      color: true,
+    },
+  },
+  parkingLot: {
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      lotType: true,
+      totalSlots: true,
+      carHourlyRate: true,
+      motorbikeHourlyRate: true,
+    },
+  },
+  parkingSlot: {
+    select: {
+      id: true,
+      slotNumber: true,
+      zoneId: true,
+      vehicleType: true,
+      status: true,
+    },
+  },
+};
+
+const formatBooking = (booking) => {
+  if (!booking) return null;
+  return {
+    ...booking,
+    slot: booking.parkingSlot ?? booking.slot ?? null,
+  };
+};
+
+const formatBookings = (bookings) => bookings.map(formatBooking);
+
 // Helper: recalculate estimated cost from booking's related data
 const calculateNewCost = async (startTime, endTime, existingBooking) => {
   const [parkingLot, vehicle] = await Promise.all([
@@ -102,7 +152,13 @@ const createBooking = asyncHandler(async (req, res) => {
     });
     return { booking, updatedSlot, payment };
   });
-  return res.status(201).json(formatSuccess({ result }));
+  return res.status(201).json(
+    formatSuccess({
+      booking: formatBooking(result.booking),
+      parkingSlot: result.updatedSlot,
+      payment: result.payment,
+    }),
+  );
 });
 
 const getOwnBooking = asyncHandler(async (req, res) => {
@@ -110,29 +166,32 @@ const getOwnBooking = asyncHandler(async (req, res) => {
 
   const bookings = await prisma.booking.findMany({
     where: { userId },
-    omit: { userId: true },
+    include: bookingInclude,
   });
 
-  return res.status(200).json(formatSuccess({ bookings }));
+  return res.status(200).json(formatSuccess({ bookings: formatBookings(bookings) }));
 });
 
 const getAllBooking = asyncHandler(async (req, res) => {
-  const bookings = await prisma.booking.findMany();
+  const bookings = await prisma.booking.findMany({
+    include: bookingInclude,
+  });
 
-  return res.status(200).json(formatSuccess({ bookings }));
+  return res.status(200).json(formatSuccess({ bookings: formatBookings(bookings) }));
 });
 
 const getBookingById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const booking = await prisma.booking.findUnique({
     where: { id },
+    include: bookingInclude,
   });
 
   if (!booking) {
     return res.status(404).json(formatError("Booking not found"));
   }
 
-  return res.status(200).json(formatSuccess({ booking }));
+  return res.status(200).json(formatSuccess({ booking: formatBooking(booking) }));
 });
 
 const updateOwnBooking = asyncHandler(async (req, res) => {
@@ -192,16 +251,18 @@ const updateOwnBooking = asyncHandler(async (req, res) => {
       return tx.booking.update({
         where: { id },
         data: { ...updateData, parkingSlotId },
+        include: bookingInclude,
       });
     });
-    return res.status(200).json(formatSuccess({ booking }));
+    return res.status(200).json(formatSuccess({ booking: formatBooking(booking) }));
   }
 
   const booking = await prisma.booking.update({
     where: { id },
     data: updateData,
+    include: bookingInclude,
   });
-  return res.status(200).json(formatSuccess({ booking }));
+  return res.status(200).json(formatSuccess({ booking: formatBooking(booking) }));
 });
 
 const updateBookingById = asyncHandler(async (req, res) => {
@@ -230,9 +291,10 @@ const updateBookingById = asyncHandler(async (req, res) => {
   const booking = await prisma.booking.update({
     where: { id },
     data: updateData,
+    include: bookingInclude,
   });
 
-  return res.status(200).json(formatSuccess({ booking }));
+  return res.status(200).json(formatSuccess({ booking: formatBooking(booking) }));
 });
 
 const updateBookingStatus = asyncHandler(async (req, res) => {
@@ -316,7 +378,7 @@ const updateBookingStatus = asyncHandler(async (req, res) => {
   const results = await prisma.$transaction(operations);
   const booking = results[0]; // first operation is always the booking update
 
-  return res.status(200).json(formatSuccess({ booking }));
+  return res.status(200).json(formatSuccess({ booking: formatBooking(booking) }));
 });
 
 const deleteBookingById = asyncHandler(async (req, res) => {
@@ -375,7 +437,7 @@ const cancelOwnBooking = asyncHandler(async (req, res) => {
       data: {
         status: "CANCELLED",
       },
-      include: { parkingSlot: true },
+      include: bookingInclude,
     }),
     // change slot status to available
     prisma.parkingSlot.update({
@@ -393,7 +455,13 @@ const cancelOwnBooking = asyncHandler(async (req, res) => {
     }),
   ]);
 
-  return res.status(200).json(formatSuccess({ booking, updatedSlot, updatedPayment }));
+  return res.status(200).json(
+    formatSuccess({
+      booking: formatBooking(booking),
+      parkingSlot: updatedSlot,
+      payment: updatedPayment,
+    }),
+  );
 });
 
 export {

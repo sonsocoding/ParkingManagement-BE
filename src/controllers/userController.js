@@ -18,16 +18,16 @@ const updateOwnProfile = asyncHandler(async (req, res) => {
   const { fullName, email, phone } = req.body;
   const userId = req.user.id;
 
-  const user = await prisma.user.findUnique({
+  const existingUser = await prisma.user.findUnique({
     where: { id: userId },
     omit: { password: true },
   });
 
-  if (!user) {
+  if (!existingUser) {
     return res.status(404).json(formatError("User not found"));
   }
 
-  const updatedUser = await prisma.user.update({
+  const user = await prisma.user.update({
     where: { id: userId },
     data: {
       fullName,
@@ -36,18 +36,18 @@ const updateOwnProfile = asyncHandler(async (req, res) => {
     },
   });
 
-  return res.status(200).json(formatSuccess({ updatedUser }));
+  return res.status(200).json(formatSuccess({ user }));
 });
 
 const deleteOwnProfile = asyncHandler(async (req, res) => {
   const userId = req.user.id;
 
-  const deletedUser = await prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
     omit: { password: true },
   });
 
-  if (!deletedUser) {
+  if (!user) {
     return res.status(404).json(formatError("User not found"));
   }
 
@@ -76,7 +76,7 @@ const deleteOwnProfile = asyncHandler(async (req, res) => {
     where: { id: userId },
   });
 
-  return res.status(200).json(formatSuccess({ deletedUser }));
+  return res.status(200).json(formatSuccess({ user }));
 });
 
 const createUser = asyncHandler(async (req, res) => {
@@ -108,16 +108,16 @@ const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { fullName, email, phone, role } = req.body;
 
-  const user = await prisma.user.findUnique({
+  const existingUser = await prisma.user.findUnique({
     where: { id },
     omit: { password: true },
   });
 
-  if (!user) {
+  if (!existingUser) {
     return res.status(404).json(formatError("User not found"));
   }
 
-  const updatedUser = await prisma.user.update({
+  const user = await prisma.user.update({
     where: { id },
     data: {
       fullName,
@@ -127,18 +127,18 @@ const updateUser = asyncHandler(async (req, res) => {
     },
   });
 
-  return res.status(200).json(formatSuccess({ updatedUser }));
+  return res.status(200).json(formatSuccess({ user }));
 });
 
 const deleteUserById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const deletedUser = await prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id },
     omit: { password: true },
   });
 
-  if (!deletedUser) {
+  if (!user) {
     return res.status(404).json(formatError("User not found"));
   }
 
@@ -167,7 +167,7 @@ const deleteUserById = asyncHandler(async (req, res) => {
     where: { id },
   });
 
-  return res.status(200).json(formatSuccess({ deletedUser }));
+  return res.status(200).json(formatSuccess({ user }));
 });
 
 export {

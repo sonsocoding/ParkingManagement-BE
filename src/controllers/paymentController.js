@@ -2,6 +2,21 @@ import { prisma } from "../config/db.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatSuccess, formatError } from "../utils/formatResponse.js";
 
+const paymentInclude = {
+  user: {
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      role: true,
+    },
+  },
+};
+
+const formatPaymentsResponse = (payments, message) =>
+  formatSuccess({ payments }, message);
+
 const VALID_TRANSITIONS = {
   PENDING: ["SUCCESS", "FAILED"],
   SUCCESS: ["REFUNDED"],
@@ -53,7 +68,7 @@ const createPayment = asyncHandler(async (req, res) => {
       referenceId,
     },
   });
-  res.status(201).json(formatSuccess(payment, "Payment created successfully"));
+  res.status(201).json(formatSuccess({ payment }, "Payment created successfully"));
 });
 
 const getOwnPayment = asyncHandler(async (req, res) => {
@@ -62,13 +77,16 @@ const getOwnPayment = asyncHandler(async (req, res) => {
     where: {
       userId,
     },
+    include: paymentInclude,
   });
-  res.status(200).json(formatSuccess(payments, "Payments fetched successfully"));
+  res.status(200).json(formatPaymentsResponse(payments, "Payments fetched successfully"));
 });
 
 const getAllPayment = asyncHandler(async (req, res) => {
-  const payments = await prisma.payment.findMany();
-  res.status(200).json(formatSuccess(payments, "Payments fetched successfully"));
+  const payments = await prisma.payment.findMany({
+    include: paymentInclude,
+  });
+  res.status(200).json(formatPaymentsResponse(payments, "Payments fetched successfully"));
 });
 
 const getPaymentByUserId = asyncHandler(async (req, res) => {
@@ -77,19 +95,21 @@ const getPaymentByUserId = asyncHandler(async (req, res) => {
     where: {
       userId,
     },
+    include: paymentInclude,
   });
-  res.status(200).json(formatSuccess(payments, "Payments fetched successfully"));
+  res.status(200).json(formatPaymentsResponse(payments, "Payments fetched successfully"));
 });
 
 const getPaymentById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const payment = await prisma.payment.findUnique({
     where: { id },
+    include: paymentInclude,
   });
   if (!payment) {
     return res.status(404).json(formatError("Payment not found"));
   }
-  res.status(200).json(formatSuccess(payment, "Payment fetched successfully"));
+  res.status(200).json(formatSuccess({ payment }, "Payment fetched successfully"));
 });
 
 const updatePaymentStatus = asyncHandler(async (req, res) => {
@@ -120,7 +140,7 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
     where: { id },
     data: { status },
   });
-  res.status(200).json(formatSuccess(payment, "Payment updated successfully"));
+  res.status(200).json(formatSuccess({ payment }, "Payment updated successfully"));
 });
 
 const handleVnpayIpn = asyncHandler(async (req, res) => {

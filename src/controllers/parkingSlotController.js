@@ -23,26 +23,26 @@ const createSlot = asyncHandler(async (req, res) => {
 const getByLotId = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const parkingSlot = await prisma.parkingSlot.findMany({
+  const parkingSlots = await prisma.parkingSlot.findMany({
     where: { parkingLotId: id },
   });
 
-  res.status(200).json(formatSuccess({ parkingSlot }));
+  res.status(200).json(formatSuccess({ parkingSlots }));
 });
 
 const updateSlotStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
   const { id } = req.params;
 
-  const parkingSlot = await prisma.parkingSlot.findUnique({
+  const existingParkingSlot = await prisma.parkingSlot.findUnique({
     where: { id },
   });
 
-  if (!parkingSlot) {
+  if (!existingParkingSlot) {
     return res.status(404).json(formatError("Parking slot not found"));
   }
 
-  const currentStatus = parkingSlot.status;
+  const currentStatus = existingParkingSlot.status;
 
   // Validate status transitions: AVAILABLE ↔ RESERVED ↔ OCCUPIED, AVAILABLE ↔ MAINTENANCE
   const isValidTransition = () => {
@@ -67,16 +67,40 @@ const updateSlotStatus = asyncHandler(async (req, res) => {
     return res.status(400).json(formatError(`Invalid status transition from ${currentStatus} to ${status}`));
   }
 
-  const updatedSlot = await prisma.parkingSlot.update({
+  const parkingSlot = await prisma.parkingSlot.update({
     where: { id },
     data: { status },
   });
 
-  return res.status(200).json(formatSuccess({ updatedSlot }));
+  return res.status(200).json(formatSuccess({ parkingSlot }));
 });
 
 const updateSlot = asyncHandler(async (req, res) => {
   const { parkingLotId, zoneId, slotNumber, vehicleType } = req.body;
+  const { id } = req.params;
+
+  const existingParkingSlot = await prisma.parkingSlot.findUnique({
+    where: { id },
+  });
+
+  if (!existingParkingSlot) {
+    return res.status(404).json(formatError("Parking slot not found"));
+  }
+
+  const parkingSlot = await prisma.parkingSlot.update({
+    where: { id },
+    data: {
+      parkingLotId,
+      zoneId,
+      slotNumber,
+      vehicleType,
+    },
+  });
+
+  return res.status(200).json(formatSuccess({ parkingSlot }));
+});
+
+const deleteSlot = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const parkingSlot = await prisma.parkingSlot.findUnique({
@@ -87,35 +111,11 @@ const updateSlot = asyncHandler(async (req, res) => {
     return res.status(404).json(formatError("Parking slot not found"));
   }
 
-  const updatedSlot = await prisma.parkingSlot.update({
-    where: { id },
-    data: {
-      parkingLotId,
-      zoneId,
-      slotNumber,
-      vehicleType,
-    },
-  });
-
-  return res.status(200).json(formatSuccess({ updatedSlot }));
-});
-
-const deleteSlot = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  const deletedSlot = await prisma.parkingSlot.findUnique({
-    where: { id },
-  });
-
-  if (!deletedSlot) {
-    return res.status(404).json(formatError("Parking slot not found"));
-  }
-
   // EDGE CASE BUG FIX: Never delete a slot that is OCCUPIED or RESERVED.
   // Doing so will cause Prisma Cascade to silently destroy the active Booking and ParkingRecord!
-  if (deletedSlot.status !== "AVAILABLE" && deletedSlot.status !== "MAINTENANCE") {
+  if (parkingSlot.status !== "AVAILABLE" && parkingSlot.status !== "MAINTENANCE") {
     return res.status(400).json(
-      formatError(`Cannot delete a slot with status ${deletedSlot.status}. Please check out vehicles and cancel bookings first.`)
+      formatError(`Cannot delete a slot with status ${parkingSlot.status}. Please check out vehicles and cancel bookings first.`)
     );
   }
 
@@ -123,7 +123,7 @@ const deleteSlot = asyncHandler(async (req, res) => {
     where: { id },
   });
 
-  return res.status(200).json(formatSuccess({ deletedSlot }));
+  return res.status(200).json(formatSuccess({ parkingSlot }));
 });
 
 export { createSlot, getByLotId, updateSlotStatus, updateSlot, deleteSlot };
