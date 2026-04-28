@@ -122,7 +122,7 @@ const checkIn = asyncHandler(async (req, res) => {
       return res.status(403).json(formatError("This is not your booking"));
     }
 
-    // Only a CONFIRMED booking (slot reserved + payment settled) can be checked into
+    // Only a CONFIRMED booking can be checked into.
     if (booking.status !== "CONFIRMED") {
       return res
         .status(400)
@@ -185,18 +185,8 @@ const checkIn = asyncHandler(async (req, res) => {
     }),
   ];
 
-  if (bookingId) {
-    // 3. Update the booking status to COMPLETED
-    operations.push(
-      prisma.booking.update({
-        where: { id: bookingId },
-        data: { status: "COMPLETED" },
-      }),
-    );
-  }
-
   if (oldSlotIdToFree) {
-    // 4. Free up the ORIGINAL slot that they reserved but didn't use
+    // 3. Free up the ORIGINAL slot that they reserved but didn't use
     operations.push(
       prisma.parkingSlot.update({
         where: { id: oldSlotIdToFree },
@@ -279,7 +269,7 @@ const checkOut = asyncHandler(async (req, res) => {
     actualCost = 0;
   }
 
-  const { updatedRecord, updatedSlot, updatedPayment } = await prisma.$transaction(async (tx) => {
+  const { updatedRecord, updatedSlot, updatedPayment, updatedBooking } = await prisma.$transaction(async (tx) => {
     const updatedRecord = await tx.parkingRecord.update({
       where: { id },
       data: {
@@ -296,15 +286,14 @@ const checkOut = asyncHandler(async (req, res) => {
     });
 
     let updatedPayment;
+    let updatedBooking = null;
 
-    // Booking checkout: finalize existing booking payment if present, otherwise create fallback.
     if (parkingRecord.bookingId) {
       const existingBookingPayment = await tx.payment.findFirst({
         where: { bookingId: parkingRecord.bookingId },
       });
 
       if (existingBookingPayment) {
-        // Update amount only — preserve the original payment method (CASH/VNPAY/etc.)
         updatedPayment = await tx.payment.update({
           where: { id: existingBookingPayment.id },
           data: {
@@ -313,7 +302,6 @@ const checkOut = asyncHandler(async (req, res) => {
           },
         });
       } else {
-        // Fallback: booking had no pre-created payment (edge case)
         updatedPayment = await tx.payment.create({
           data: {
             userId,
@@ -324,14 +312,20 @@ const checkOut = asyncHandler(async (req, res) => {
           },
         });
       }
+      updatedBooking = await tx.booking.update({
+        where: { id: parkingRecord.bookingId },
+        data: {
+          status: "COMPLETED",
+        },
+      });
+    } else if (parkingRecord.monthlyPassId) {
+      updatedPayment = null;
     } else {
-      // Walk-in checkout (no booking): attach/create payment on parking record.
       const existingRecordPayment = await tx.payment.findFirst({
         where: { parkingRecordId: id },
       });
 
       if (existingRecordPayment) {
-        // Update amount only — preserve the original payment method
         updatedPayment = await tx.payment.update({
           where: { id: existingRecordPayment.id },
           data: {
@@ -353,18 +347,19 @@ const checkOut = asyncHandler(async (req, res) => {
       }
     }
 
-    return { updatedRecord, updatedSlot, updatedPayment };
+    return { updatedRecord, updatedSlot, updatedPayment, updatedBooking };
   });
 
   return res.status(200).json(
     formatSuccess(
       {
-      parkingRecord: updatedRecord,
-      parkingSlot: updatedSlot,
-      payment: updatedPayment,
-    },
-    "Check-out successful",
-  ),
+        parkingRecord: updatedRecord,
+        parkingSlot: updatedSlot,
+        payment: updatedPayment,
+        booking: updatedBooking,
+      },
+      "Check-out successful",
+    ),
   );
 });
 

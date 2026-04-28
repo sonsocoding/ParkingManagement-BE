@@ -150,6 +150,7 @@ const handleVnpayIpn = asyncHandler(async (req, res) => {
 
   const txnRef = req.query.vnp_TxnRef; // This is our booking ID
   const responseCode = req.query.vnp_ResponseCode;
+  const transactionNo = req.query.vnp_TransactionNo;
 
   const booking = await prisma.booking.findUnique({
     where: { id: txnRef },
@@ -178,7 +179,10 @@ const handleVnpayIpn = asyncHandler(async (req, res) => {
     await prisma.$transaction([
       prisma.payment.update({
         where: { id: payment.id },
-        data: { status: "SUCCESS" },
+        data: {
+          status: "SUCCESS",
+          referenceId: transactionNo ? String(transactionNo) : payment.referenceId,
+        },
       }),
       prisma.booking.update({
         where: { id: booking.id },

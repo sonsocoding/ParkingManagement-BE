@@ -16,7 +16,7 @@ A **Smart Parking Management System** backend — REST API built with Node.js, E
 
 | File | Purpose |
 |---|---|
-| `prisma/schema.prisma` | Full database schema — 9 models, 7 enums. **Read this to understand all data relationships.** |
+| `prisma/schema.prisma` | Full database schema — models, enums, and relations. **Read this to understand all data relationships.** |
 | `docs/roles.md` | Permission matrix — who can do what. **Consult this before writing any route.** |
 | `docs/instruction.md` | Development roadmap — phases and build order. **Follow this for new modules.** |
 | `docs/folder_structures.md` | What exists and what's `[TODO]`. |
@@ -55,13 +55,12 @@ Route → Middleware (authenticate → [authorize] → [validate]) → Controlle
 
 The system supports two booking payment methods: `CASH` and `VNPAY`.
 
-### CASH Flow (current default)
+### CASH Flow
 
 ```
 USER: POST /api/bookings  { paymentMethod: "CASH" }
   → Booking created with status: CONFIRMED
   → Slot set to RESERVED
-  → Payment created with status: PENDING, linked to booking.id
 
 USER: POST /api/records/checkin  { vehicleId, parkingSlotId, parkingLotId, bookingId }
   → Check booking is CONFIRMED (RESERVED slot is accepted here — not AVAILABLE)
@@ -70,26 +69,34 @@ USER: POST /api/records/checkin  { vehicleId, parkingSlotId, parkingLotId, booki
 
 USER: PUT /api/records/:id/checkout
   → actualCost calculated from real check-in/check-out time
-  → ParkingRecord updated: status CHECKED_OUT, actualCost, checkOutTime
-  → Existing booking payment amount updated to actualCost; status set to SUCCESS
+  → ParkingRecord updated: status CHECKED_OUT, actualCost, checkOutTime, paymentStatus SUCCESS
+  → If booking-backed: create one CASH payment linked to booking.id
+  → If walk-in: create one CASH payment linked to parkingRecord.id
+  → Booking moved to COMPLETED at checkout
   → Slot set to AVAILABLE
 ```
 
-### VNPAY Flow (stubbed — not enabled in booking yet)
+### VNPAY Flow
 
 ```
 POST /api/bookings  { paymentMethod: "VNPAY" }
-  → throws Error — disabled pending full gateway integration
+  → Booking created with status: PENDING_PAYMENT
+  → Slot set to RESERVED
+  → Payment created with status: PENDING, linked to booking.id
 
 IPN callback: GET /api/payments/vnpay-ipn?vnp_TxnRef=<bookingId>&vnp_ResponseCode=<code>
   → responseCode "00" → payment SUCCESS + booking CONFIRMED + slot RESERVED
   → responseCode else → payment FAILED + booking CANCELLED + slot AVAILABLE
+
+Background expiration job:
+  → Finds VNPAY payments stuck in PENDING for 15+ minutes
+  → Marks payment FAILED + booking CANCELLED + slot AVAILABLE
 ```
 
 ### Booking Status Machine
 
 ```
-PENDING_PAYMENT → CONFIRMED → (check-in) → → (check-out) → COMPLETED
+PENDING_PAYMENT → CONFIRMED → (check-in) → (check-out) → COMPLETED
 PENDING_PAYMENT → CANCELLED
 CONFIRMED       → CANCELLED
 ```
@@ -226,10 +233,11 @@ formatError("Something went wrong")    // error message
 3. **Never expose raw error objects** to the client — log server-side, return generic message
 4. **Never use `404` for server errors** — use `500` for internal errors, `404` only for "not found"
 5. **Never send a body with `204`** — `res.status(204).send()`, no `.json()`
-6. **Never create payment without linking bookingId or monthlyPassId** — orphaned payments break the flow
+6. **Never create payment without linking bookingId, monthlyPassId, or parkingRecordId** — orphaned payments break the flow
 7. **Never check `status !== AVAILABLE`** when a booking check-in is expected — reserved slots are valid targets
 8. **Never use `CANCELLED` as a `PaymentStatus`** — `PaymentStatus` enum is `PENDING / SUCCESS / FAILED / REFUNDED`. Use `FAILED` when cancelling a booking's payment.
 9. **Monthly pass renewal payments** are NOT linked via `monthlyPassId` (schema has `@unique`) — they are standalone payment records
+10. **Do not assume every booking has a payment row** — cash bookings intentionally defer payment creation until checkout
 
 ---
 

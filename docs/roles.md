@@ -35,14 +35,14 @@ Two roles: **ADMIN**, **USER**.
 | **MonthlyPass** | Register/Renew/Cancel own | ✅ | ✅ |
 | | View all passes | ❌ | ✅ |
 | | Approve/Terminate any | ❌ | ✅ |
-| **AdminLog** | View audit logs | ❌ | ✅ |
-| **Dashboard** | Revenue & analytics | ❌ | ✅ |
 
 ---
 
 ## Role Summary
 
 **USER** — Can only access and modify **own** data. No cross-user visibility. Can create bookings, check in/out their own vehicles, and view their own payments.
+
+Payment note: users may have active bookings with no `Payment` row yet when the method is `CASH`; payment is created later at checkout.
 
 
 

@@ -246,6 +246,7 @@ async function main() {
     paymentMethod,
     slotStatus,
     referenceId,
+    createPayment = false,
   }) => {
     const booking = await prisma.booking.create({
       data: {
@@ -260,16 +261,18 @@ async function main() {
       },
     });
 
-    await prisma.payment.create({
-      data: {
-        userId,
-        bookingId: booking.id,
-        amount: estimatedCost,
-        method: paymentMethod,
-        status: paymentStatus,
-        referenceId,
-      },
-    });
+    if (createPayment) {
+      await prisma.payment.create({
+        data: {
+          userId,
+          bookingId: booking.id,
+          amount: estimatedCost,
+          method: paymentMethod,
+          status: paymentStatus,
+          referenceId,
+        },
+      });
+    }
 
     if (slotStatus) {
       await prisma.parkingSlot.update({
@@ -295,6 +298,8 @@ async function main() {
     recordStatus,
     paymentMethod,
     referenceId,
+    createPayment = false,
+    paymentLink = "parkingRecord",
   }) => {
     const record = await prisma.parkingRecord.create({
       data: {
@@ -311,16 +316,19 @@ async function main() {
       },
     });
 
-    await prisma.payment.create({
-      data: {
-        userId,
-        parkingRecordId: record.id,
-        amount: actualCost,
-        method: paymentMethod,
-        status: paymentStatus,
-        referenceId,
-      },
-    });
+    if (createPayment) {
+      await prisma.payment.create({
+        data: {
+          userId,
+          bookingId: paymentLink === "booking" ? bookingId : null,
+          parkingRecordId: paymentLink === "parkingRecord" ? record.id : null,
+          amount: actualCost,
+          method: paymentMethod,
+          status: paymentStatus,
+          referenceId,
+        },
+      });
+    }
 
     const nextStatus = recordStatus === "CHECKED_IN" ? "OCCUPIED" : "AVAILABLE";
     await prisma.parkingSlot.update({
@@ -393,6 +401,7 @@ async function main() {
       paymentStatus: "PENDING",
       recordStatus: "CHECKED_IN",
       paymentMethod: "CASH",
+      createPayment: false,
     });
   }
 
@@ -409,6 +418,7 @@ async function main() {
       paymentStatus: "SUCCESS",
       paymentMethod: "VNPAY",
       referenceId: "VNPAY-BOOKING-1001",
+      createPayment: true,
     },
     {
       user: appUsers[4],
@@ -422,6 +432,7 @@ async function main() {
       paymentStatus: "SUCCESS",
       paymentMethod: "VNPAY",
       referenceId: "VNPAY-BOOKING-1002",
+      createPayment: true,
     },
     {
       user: appUsers[7],
@@ -431,9 +442,11 @@ async function main() {
       startOffsetHours: 3,
       durationHours: 2,
       amount: 100000,
-      bookingStatus: "PENDING_PAYMENT",
-      paymentStatus: "PENDING",
+      bookingStatus: "CONFIRMED",
+      paymentStatus: null,
       paymentMethod: "CASH",
+      referenceId: null,
+      createPayment: false,
     },
     {
       user: appUsers[9],
@@ -443,10 +456,12 @@ async function main() {
       startOffsetHours: 5,
       durationHours: 5,
       amount: 50000,
-      bookingStatus: "PENDING_PAYMENT",
+      bookingStatus: "CANCELLED",
       paymentStatus: "FAILED",
       paymentMethod: "VNPAY",
       referenceId: "VNPAY-BOOKING-1003",
+      createPayment: true,
+      slotStatus: "AVAILABLE",
     },
   ];
 
@@ -462,8 +477,9 @@ async function main() {
       bookingStatus: item.bookingStatus,
       paymentStatus: item.paymentStatus,
       paymentMethod: item.paymentMethod,
-      slotStatus: "RESERVED",
+      slotStatus: item.slotStatus ?? "RESERVED",
       referenceId: item.referenceId,
+      createPayment: item.createPayment,
     });
   }
 
@@ -477,6 +493,7 @@ async function main() {
     paymentStatus: "PENDING",
     recordStatus: "CHECKED_IN",
     paymentMethod: "CASH",
+    createPayment: false,
   });
 
   await createParkingRecord({
@@ -489,6 +506,7 @@ async function main() {
     paymentStatus: "PENDING",
     recordStatus: "CHECKED_IN",
     paymentMethod: "CASH",
+    createPayment: false,
   });
 
   await createParkingRecord({
@@ -501,6 +519,7 @@ async function main() {
     paymentStatus: "PENDING",
     recordStatus: "CHECKED_IN",
     paymentMethod: "CASH",
+    createPayment: false,
   });
 
   await createBooking({
@@ -516,6 +535,7 @@ async function main() {
     paymentMethod: "VNPAY",
     slotStatus: "RESERVED",
     referenceId: "VNPAY-BOOKING-2001",
+    createPayment: true,
   });
 
   const pastScenarios = [
@@ -541,9 +561,9 @@ async function main() {
       durationHours: 5,
       amount: 250000,
       paymentStatus: "SUCCESS",
-      paymentMethod: "VNPAY",
+      paymentMethod: "CASH",
       booking: false,
-      referenceId: "VNPAY-RECORD-3001",
+      referenceId: null,
     },
     {
       user: appUsers[6],
@@ -553,10 +573,10 @@ async function main() {
       startDaysAgo: 6,
       durationHours: 8,
       amount: 40000,
-      paymentStatus: "REFUNDED",
-      paymentMethod: "VNPAY",
+      paymentStatus: "SUCCESS",
+      paymentMethod: "CASH",
       booking: false,
-      referenceId: "VNPAY-RECORD-3002",
+      referenceId: null,
     },
     {
       user: appUsers[9],
@@ -568,8 +588,8 @@ async function main() {
       amount: 360000,
       paymentStatus: "SUCCESS",
       paymentMethod: "VNPAY",
-      booking: false,
-      referenceId: "VNPAY-RECORD-3003",
+      booking: true,
+      referenceId: "VNPAY-BOOKING-3003",
     },
   ];
 
@@ -590,6 +610,8 @@ async function main() {
         bookingStatus: "COMPLETED",
         paymentStatus: "SUCCESS",
         paymentMethod: item.paymentMethod,
+        createPayment: item.paymentMethod === "VNPAY",
+        referenceId: item.referenceId,
       });
       bookingId = booking.id;
     }
@@ -607,6 +629,8 @@ async function main() {
       recordStatus: "CHECKED_OUT",
       paymentMethod: item.paymentMethod,
       referenceId: item.referenceId,
+      createPayment: item.paymentMethod === "CASH" || !item.booking,
+      paymentLink: item.booking ? "booking" : "parkingRecord",
     });
   }
 
