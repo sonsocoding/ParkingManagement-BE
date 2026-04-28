@@ -6,7 +6,6 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Starting database seed...\n");
 
-  // Clean previous data (dependency order: children first)
   await prisma.payment.deleteMany({});
   await prisma.monthlyPass.deleteMany({});
   await prisma.parkingRecord.deleteMany({});
@@ -16,316 +15,703 @@ async function main() {
   await prisma.parkingLot.deleteMany({});
   await prisma.user.deleteMany({});
 
-  // ===== CREATE USERS (1 of each role) =====
   const [hashedAdmin, hashedUser] = await Promise.all([
     bcrypt.hash("admin123", 10),
     bcrypt.hash("user123", 10),
   ]);
 
-  const admin = await prisma.user.create({
-    data: {
-      email: "admin@parking.com",
-      password: hashedAdmin,
-      phone: "0901234567",
-      fullName: "Nguyễn Văn Admin",
-      role: "ADMIN",
-    },
-  });
-  console.log("✅ Created admin:", admin.email);
+  const userProfiles = [
+    ["user1@parking.com", "Lê Văn Minh", "0903234567"],
+    ["user2@parking.com", "Trần Thị Lan", "0904234567"],
+    ["user3@parking.com", "Phạm Quốc Huy", "0905234567"],
+    ["user4@parking.com", "Đỗ Mai Anh", "0906234567"],
+    ["user5@parking.com", "Bùi Gia Bảo", "0907234567"],
+    ["user6@parking.com", "Ngô Thu Hà", "0908234567"],
+    ["user7@parking.com", "Vũ Nhật Nam", "0909234567"],
+    ["user8@parking.com", "Trương Quỳnh Chi", "0910234567"],
+    ["user9@parking.com", "Hoàng Đức Long", "0911234567"],
+    ["user10@parking.com", "Phan Khánh Vy", "0912234567"],
+    ["user11@parking.com", "Đặng Minh Quân", "0913234567"],
+    ["user12@parking.com", "Lý Hải Yến", "0914234567"],
+  ];
 
-  const user = await prisma.user.create({
-    data: {
-      email: "user@parking.com",
-      password: hashedUser,
-      phone: "0903234567",
-      fullName: "Lê Văn User",
-      role: "USER",
-    },
-  });
-  console.log("✅ Created user:", user.email);
+  const createdUsers = [];
+  createdUsers.push(
+    await prisma.user.create({
+      data: {
+        email: "admin@parking.com",
+        password: hashedAdmin,
+        phone: "0901234567",
+        fullName: "Nguyễn Văn Admin",
+        role: "ADMIN",
+      },
+    })
+  );
 
-  // ===== CREATE PARKING LOT =====
-  const parkingLot = await prisma.parkingLot.create({
+  for (const [email, fullName, phone] of userProfiles) {
+    createdUsers.push(
+      await prisma.user.create({
+        data: {
+          email,
+          password: hashedUser,
+          phone,
+          fullName,
+          role: "USER",
+        },
+      })
+    );
+  }
+
+  const admin = createdUsers[0];
+  const appUsers = createdUsers.slice(1);
+
+  console.log(`✅ Created ${createdUsers.length} users`);
+
+  const parkingLot1 = await prisma.parkingLot.create({
     data: {
       name: "Bãi Đỗ Tây Hồ",
       address: "Số 123, Đường Tây Hồ, Quận Tây Hồ, Hà Nội",
-      totalSlots: 100,
+      totalSlots: 72,
       lotType: "BOTH",
-      carHourlyRate: 50000, // 50,000 VND/hour
-      motorbikeHourlyRate: 10000, // 10,000 VND/hour
+      carHourlyRate: 50000,
+      motorbikeHourlyRate: 10000,
       zones: {
         carZones: [
-          { zoneId: "A", name: "Khu A", slotCount: 30 },
-          { zoneId: "B", name: "Khu B", slotCount: 20 },
+          { zoneId: "A", name: "Khu A", slotCount: 18 },
+          { zoneId: "B", name: "Khu B", slotCount: 18 },
         ],
         motoZones: [
-          { zoneId: "C", name: "Khu C", slotCount: 30 },
-          { zoneId: "D", name: "Khu D", slotCount: 20 },
+          { zoneId: "C", name: "Khu C", slotCount: 18 },
+          { zoneId: "D", name: "Khu D", slotCount: 18 },
         ],
       },
     },
   });
-  console.log("✅ Created parking lot:", parkingLot.name);
 
-  // ===== CREATE PARKING LOT 2 =====
   const parkingLot2 = await prisma.parkingLot.create({
     data: {
       name: "Bãi Đỗ Bách Khoa",
       address: "Số 1 Đại Cồ Việt, Hai Bà Trưng, Hà Nội",
-      totalSlots: 150,
+      totalSlots: 40,
       lotType: "BOTH",
       carHourlyRate: 40000,
       motorbikeHourlyRate: 5000,
       zones: {
-        carZones: [{ zoneId: "E", name: "Khu E", slotCount: 50 }],
-        motoZones: [{ zoneId: "F", name: "Khu F", slotCount: 100 }],
+        carZones: [{ zoneId: "E", name: "Khu E", slotCount: 20 }],
+        motoZones: [{ zoneId: "F", name: "Khu F", slotCount: 20 }],
       },
     },
   });
-  console.log("✅ Created parking lot:", parkingLot2.name);
 
-  // ===== CREATE PARKING LOT 3 =====
   const parkingLot3 = await prisma.parkingLot.create({
     data: {
       name: "Bãi Đỗ Ô Tô Cầu Giấy",
       address: "241 Xuân Thủy, Cầu Giấy, Hà Nội",
-      totalSlots: 80,
+      totalSlots: 40,
       lotType: "CAR_ONLY",
       carHourlyRate: 60000,
       zones: {
         carZones: [
-          { zoneId: "VIP", name: "Khu VIP", slotCount: 20 },
-          { zoneId: "G", name: "Khu G", slotCount: 60 },
+          { zoneId: "VIP", name: "Khu VIP", slotCount: 15 },
+          { zoneId: "G", name: "Khu G", slotCount: 25 },
         ],
       },
     },
   });
-  console.log("✅ Created parking lot:", parkingLot3.name);
 
-  // ===== CREATE PARKING SLOTS =====
-  const slots = [];
+  console.log("✅ Created 3 parking lots");
 
-  // Car slots in Zone A (5 slots)
-  for (let i = 1; i <= 5; i++) {
-    const slot = await prisma.parkingSlot.create({
-      data: {
-        parkingLotId: parkingLot.id,
-        zoneId: "A",
-        slotNumber: `A-${i}`,
-        vehicleType: "CAR",
-        status: "AVAILABLE",
-      },
+  const slotPlans = [
+    { parkingLotId: parkingLot1.id, zoneId: "A", vehicleType: "CAR", count: 18 },
+    { parkingLotId: parkingLot1.id, zoneId: "B", vehicleType: "CAR", count: 18 },
+    { parkingLotId: parkingLot1.id, zoneId: "C", vehicleType: "MOTORBIKE", count: 18 },
+    { parkingLotId: parkingLot1.id, zoneId: "D", vehicleType: "MOTORBIKE", count: 18 },
+    { parkingLotId: parkingLot2.id, zoneId: "E", vehicleType: "CAR", count: 20 },
+    { parkingLotId: parkingLot2.id, zoneId: "F", vehicleType: "MOTORBIKE", count: 20 },
+    { parkingLotId: parkingLot3.id, zoneId: "VIP", vehicleType: "CAR", count: 15 },
+    { parkingLotId: parkingLot3.id, zoneId: "G", vehicleType: "CAR", count: 25 },
+  ];
+
+  const slots = {};
+  const slotsByZone = {};
+  for (const plan of slotPlans) {
+    slotsByZone[plan.zoneId] = [];
+    for (let i = 1; i <= plan.count; i++) {
+      const slot = await prisma.parkingSlot.create({
+        data: {
+          parkingLotId: plan.parkingLotId,
+          zoneId: plan.zoneId,
+          slotNumber: `${plan.zoneId}-${i}`,
+          vehicleType: plan.vehicleType,
+          status: "AVAILABLE",
+        },
+      });
+      slots[slot.slotNumber] = slot;
+      slotsByZone[plan.zoneId].push(slot);
+    }
+  }
+  console.log(`✅ Created ${Object.keys(slots).length} parking slots`);
+
+  const maintenanceSlotNumbers = ["A-18", "B-18", "D-18", "E-20", "VIP-15"];
+  for (const slotNumber of maintenanceSlotNumbers) {
+    await prisma.parkingSlot.update({
+      where: { id: slots[slotNumber].id },
+      data: { status: "MAINTENANCE" },
     });
-    slots.push(slot);
+    slots[slotNumber].status = "MAINTENANCE";
   }
 
-  // Car slots in Zone B (3 slots)
-  for (let i = 1; i <= 3; i++) {
-    const slot = await prisma.parkingSlot.create({
-      data: {
-        parkingLotId: parkingLot.id,
-        zoneId: "B",
-        slotNumber: `B-${i}`,
-        vehicleType: "CAR",
-        status: "AVAILABLE",
-      },
-    });
-    slots.push(slot);
-  }
+  const colors = [
+    "Black",
+    "White",
+    "Silver",
+    "Blue",
+    "Red",
+    "Gray",
+    "Green",
+    "Yellow",
+    "Brown",
+    "Orange",
+  ];
 
-  // Motorbike slots in Zone C (2 slots)
-  for (let i = 1; i <= 2; i++) {
-    const slot = await prisma.parkingSlot.create({
-      data: {
-        parkingLotId: parkingLot.id,
-        zoneId: "C",
-        slotNumber: `C-${i}`,
-        vehicleType: "MOTORBIKE",
-        status: "AVAILABLE",
-      },
-    });
-    slots.push(slot);
-  }
+  const carPlates = [
+    "30A-12345",
+    "30K-56789",
+    "88A-99887",
+    "51G-31313",
+    "34A-68686",
+    "29A-11223",
+    "30G-77889",
+    "15A-88990",
+    "43A-55667",
+    "18A-22446",
+    "99A-66778",
+    "35A-10101",
+  ];
 
-  console.log(`✅ Created ${slots.length} parking slots`);
+  const bikePlates = [
+    "29M1-45678",
+    "30H7-23456",
+    "17B2-11122",
+    "43F1-76543",
+    "29X3-88991",
+    "30L9-22334",
+    "14B7-55678",
+    "36M2-90123",
+    "37H1-34567",
+    "92K1-77889",
+    "59T2-11224",
+    "47P1-88901",
+  ];
 
-  // ===== CREATE VEHICLES =====
-  const vehicle1 = await prisma.vehicle.create({
-    data: {
+  const vehicles = {};
+  const userVehicles = [];
+  appUsers.forEach((user, index) => {
+    const carPlate = carPlates[index];
+    const bikePlate = bikePlates[index];
+    userVehicles.push({
       userId: user.id,
-      plateNumber: "30A-12345",
+      plateNumber: carPlate,
       vehicleType: "CAR",
-      color: "Black",
-    },
-  });
-  console.log("✅ Created vehicle 1:", vehicle1.plateNumber);
-
-  const vehicle2 = await prisma.vehicle.create({
-    data: {
+      color: colors[index % colors.length],
+    });
+    userVehicles.push({
       userId: user.id,
-      plateNumber: "30B-98765",
+      plateNumber: bikePlate,
       vehicleType: "MOTORBIKE",
-      color: "Blue",
-    },
+      color: colors[(index + 3) % colors.length],
+    });
   });
-  console.log("✅ Created vehicle 2:", vehicle2.plateNumber);
 
-  const vehicle3 = await prisma.vehicle.create({
-    data: {
-      userId: user.id,
-      plateNumber: "30C-55555",
-      vehicleType: "CAR",
-      color: "White",
-    },
-  });
-  console.log("✅ Created vehicle 3:", vehicle3.plateNumber);
+  for (const vehicleData of userVehicles) {
+    const vehicle = await prisma.vehicle.create({ data: vehicleData });
+    vehicles[vehicle.plateNumber] = vehicle;
+  }
+  console.log(`✅ Created ${Object.keys(vehicles).length} vehicles`);
 
-  const vehicle4 = await prisma.vehicle.create({
-    data: {
-      userId: user.id,
-      plateNumber: "30D-44444",
-      vehicleType: "MOTORBIKE",
-      color: "Red",
-    },
-  });
-  console.log("✅ Created vehicle 4:", vehicle4.plateNumber);
-
-  // ===== CREATE BOOKINGS & PAYMENTS =====
-  // Booking 1: CONFIRMED + paid (slot is RESERVED, will be checked in)
   const now = new Date();
+  const hour = 60 * 60 * 1000;
+  const day = 24 * hour;
 
-  const booking1 = await prisma.booking.create({
-    data: {
-      userId: user.id,
-      vehicleId: vehicle1.id,
-      parkingSlotId: slots[0].id, // A-1
-      parkingLotId: parkingLot.id,
-      startTime: now,
-      endTime: new Date(now.getTime() + 2 * 60 * 60 * 1000), // +2 hours
-      estimatedCost: 100000,
-      status: "CONFIRMED",
-    },
-  });
-  console.log("✅ Created booking 1 (CONFIRMED):", booking1.id);
+  const createBooking = async ({
+    userId,
+    vehicleId,
+    slotNumber,
+    parkingLotId,
+    startTime,
+    endTime,
+    estimatedCost,
+    bookingStatus,
+    paymentStatus,
+    paymentMethod,
+    slotStatus,
+    referenceId,
+  }) => {
+    const booking = await prisma.booking.create({
+      data: {
+        userId,
+        vehicleId,
+        parkingSlotId: slots[slotNumber].id,
+        parkingLotId,
+        startTime,
+        endTime,
+        estimatedCost,
+        status: bookingStatus,
+      },
+    });
 
-  // Mark slot A-1 as RESERVED (it's a confirmed booking)
-  await prisma.parkingSlot.update({
-    where: { id: slots[0].id },
-    data: { status: "RESERVED" },
-  });
+    await prisma.payment.create({
+      data: {
+        userId,
+        bookingId: booking.id,
+        amount: estimatedCost,
+        method: paymentMethod,
+        status: paymentStatus,
+        referenceId,
+      },
+    });
 
-  // Payment for booking1 — PENDING (will become SUCCESS at checkout)
-  const payment1 = await prisma.payment.create({
-    data: {
-      userId: user.id,
-      bookingId: booking1.id,
-      amount: 100000,
-      method: "CASH",
-      status: "PENDING",
-    },
-  });
-  console.log("✅ Created payment 1 (linked to booking1):", payment1.id);
+    if (slotStatus) {
+      await prisma.parkingSlot.update({
+        where: { id: slots[slotNumber].id },
+        data: { status: slotStatus },
+      });
+      slots[slotNumber].status = slotStatus;
+    }
 
-  // ParkingRecord for booking1 — vehicle has checked in
-  const record1 = await prisma.parkingRecord.create({
-    data: {
-      userId: user.id,
-      vehicleId: vehicle1.id,
-      parkingLotId: parkingLot.id,
-      parkingSlotId: slots[0].id,
-      bookingId: booking1.id,
-      checkInTime: new Date(now.getTime() - 30 * 60 * 1000), // checked in 30 min ago
-      checkOutTime: null,
+    return booking;
+  };
+
+  const createParkingRecord = async ({
+    userId,
+    vehicleId,
+    slotNumber,
+    parkingLotId,
+    bookingId = null,
+    checkInTime,
+    checkOutTime = null,
+    actualCost,
+    paymentStatus,
+    recordStatus,
+    paymentMethod,
+    referenceId,
+  }) => {
+    const record = await prisma.parkingRecord.create({
+      data: {
+        userId,
+        vehicleId,
+        parkingLotId,
+        parkingSlotId: slots[slotNumber].id,
+        bookingId,
+        checkInTime,
+        checkOutTime,
+        actualCost,
+        paymentStatus,
+        status: recordStatus,
+      },
+    });
+
+    await prisma.payment.create({
+      data: {
+        userId,
+        parkingRecordId: record.id,
+        amount: actualCost,
+        method: paymentMethod,
+        status: paymentStatus,
+        referenceId,
+      },
+    });
+
+    const nextStatus = recordStatus === "CHECKED_IN" ? "OCCUPIED" : "AVAILABLE";
+    await prisma.parkingSlot.update({
+      where: { id: slots[slotNumber].id },
+      data: { status: nextStatus },
+    });
+    slots[slotNumber].status = nextStatus;
+
+    return record;
+  };
+
+  const lot1OccupiedCars = [
+    { slot: "A-1", plate: "30A-12345", user: appUsers[0] },
+    { slot: "A-2", plate: "30K-56789", user: appUsers[1] },
+    { slot: "A-3", plate: "88A-99887", user: appUsers[2] },
+    { slot: "A-4", plate: "51G-31313", user: appUsers[3] },
+    { slot: "A-5", plate: "34A-68686", user: appUsers[4] },
+    { slot: "A-6", plate: "29A-11223", user: appUsers[5] },
+    { slot: "A-7", plate: "30G-77889", user: appUsers[6] },
+    { slot: "A-8", plate: "15A-88990", user: appUsers[7] },
+    { slot: "A-9", plate: "43A-55667", user: appUsers[8] },
+    { slot: "A-10", plate: "18A-22446", user: appUsers[9] },
+    { slot: "A-11", plate: "99A-66778", user: appUsers[10] },
+    { slot: "A-12", plate: "35A-10101", user: appUsers[11] },
+    { slot: "B-1", plate: "30A-12345", user: appUsers[0] },
+    { slot: "B-2", plate: "30K-56789", user: appUsers[1] },
+    { slot: "B-3", plate: "88A-99887", user: appUsers[2] },
+    { slot: "B-4", plate: "51G-31313", user: appUsers[3] },
+    { slot: "B-5", plate: "34A-68686", user: appUsers[4] },
+    { slot: "B-6", plate: "29A-11223", user: appUsers[5] },
+    { slot: "B-7", plate: "30G-77889", user: appUsers[6] },
+    { slot: "B-8", plate: "15A-88990", user: appUsers[7] },
+  ];
+
+  const lot1OccupiedBikes = [
+    { slot: "C-1", plate: "29M1-45678", user: appUsers[0] },
+    { slot: "C-2", plate: "30H7-23456", user: appUsers[1] },
+    { slot: "C-3", plate: "17B2-11122", user: appUsers[2] },
+    { slot: "C-4", plate: "43F1-76543", user: appUsers[3] },
+    { slot: "C-5", plate: "29X3-88991", user: appUsers[4] },
+    { slot: "C-6", plate: "30L9-22334", user: appUsers[5] },
+    { slot: "C-7", plate: "14B7-55678", user: appUsers[6] },
+    { slot: "C-8", plate: "36M2-90123", user: appUsers[7] },
+    { slot: "C-9", plate: "37H1-34567", user: appUsers[8] },
+    { slot: "C-10", plate: "92K1-77889", user: appUsers[9] },
+    { slot: "C-11", plate: "59T2-11224", user: appUsers[10] },
+    { slot: "C-12", plate: "47P1-88901", user: appUsers[11] },
+    { slot: "D-1", plate: "29M1-45678", user: appUsers[0] },
+    { slot: "D-2", plate: "30H7-23456", user: appUsers[1] },
+    { slot: "D-3", plate: "17B2-11122", user: appUsers[2] },
+    { slot: "D-4", plate: "43F1-76543", user: appUsers[3] },
+    { slot: "D-5", plate: "29X3-88991", user: appUsers[4] },
+    { slot: "D-6", plate: "30L9-22334", user: appUsers[5] },
+    { slot: "D-7", plate: "14B7-55678", user: appUsers[6] },
+    { slot: "D-8", plate: "36M2-90123", user: appUsers[7] },
+    { slot: "D-9", plate: "37H1-34567", user: appUsers[8] },
+    { slot: "D-10", plate: "92K1-77889", user: appUsers[9] },
+    { slot: "D-11", plate: "59T2-11224", user: appUsers[10] },
+    { slot: "D-12", plate: "47P1-88901", user: appUsers[11] },
+  ];
+
+  for (const [index, item] of [...lot1OccupiedCars, ...lot1OccupiedBikes].entries()) {
+    await createParkingRecord({
+      userId: item.user.id,
+      vehicleId: vehicles[item.plate].id,
+      slotNumber: item.slot,
+      parkingLotId: parkingLot1.id,
+      checkInTime: new Date(now.getTime() - (index + 1) * 20 * 60 * 1000),
       actualCost: 0,
       paymentStatus: "PENDING",
-      status: "CHECKED_IN",
+      recordStatus: "CHECKED_IN",
+      paymentMethod: "CASH",
+    });
+  }
+
+  const reservedBookings = [
+    {
+      user: appUsers[0],
+      plate: "35A-10101",
+      slot: "B-13",
+      lotId: parkingLot1.id,
+      startOffsetHours: 1,
+      durationHours: 3,
+      amount: 150000,
+      bookingStatus: "CONFIRMED",
+      paymentStatus: "SUCCESS",
+      paymentMethod: "VNPAY",
+      referenceId: "VNPAY-BOOKING-1001",
     },
-  });
-
-  // Update slot A-1 to OCCUPIED (vehicle has physically arrived)
-  await prisma.parkingSlot.update({
-    where: { id: slots[0].id },
-    data: { status: "OCCUPIED" },
-  });
-  console.log("✅ Created parking record 1 (CHECKED_IN):", record1.id);
-
-  // Booking 2: PENDING_PAYMENT — slot is still AVAILABLE until payment confirmed
-  const booking2 = await prisma.booking.create({
-    data: {
-      userId: user.id,
-      vehicleId: vehicle2.id,
-      parkingSlotId: slots[8].id, // C-1
-      parkingLotId: parkingLot.id,
-      startTime: new Date(now.getTime() + 1 * 60 * 60 * 1000), // starts in 1 hour
-      endTime: new Date(now.getTime() + 4 * 60 * 60 * 1000), // +4 hours
-      estimatedCost: 30000, // 3 hours × 10,000 VND
-      status: "PENDING_PAYMENT",
+    {
+      user: appUsers[4],
+      plate: "47P1-88901",
+      slot: "D-13",
+      lotId: parkingLot1.id,
+      startOffsetHours: 2,
+      durationHours: 4,
+      amount: 40000,
+      bookingStatus: "CONFIRMED",
+      paymentStatus: "SUCCESS",
+      paymentMethod: "VNPAY",
+      referenceId: "VNPAY-BOOKING-1002",
     },
-  });
-  console.log("✅ Created booking 2 (PENDING_PAYMENT):", booking2.id);
+    {
+      user: appUsers[7],
+      plate: "43A-55667",
+      slot: "B-14",
+      lotId: parkingLot1.id,
+      startOffsetHours: 3,
+      durationHours: 2,
+      amount: 100000,
+      bookingStatus: "PENDING_PAYMENT",
+      paymentStatus: "PENDING",
+      paymentMethod: "CASH",
+    },
+    {
+      user: appUsers[9],
+      plate: "92K1-77889",
+      slot: "D-14",
+      lotId: parkingLot1.id,
+      startOffsetHours: 5,
+      durationHours: 5,
+      amount: 50000,
+      bookingStatus: "PENDING_PAYMENT",
+      paymentStatus: "FAILED",
+      paymentMethod: "VNPAY",
+      referenceId: "VNPAY-BOOKING-1003",
+    },
+  ];
 
-  // Payment for booking2 — also PENDING (awaiting user payment action)
-  const payment2 = await prisma.payment.create({
-    data: {
-      userId: user.id,
-      bookingId: booking2.id,
+  for (const item of reservedBookings) {
+    await createBooking({
+      userId: item.user.id,
+      vehicleId: vehicles[item.plate].id,
+      slotNumber: item.slot,
+      parkingLotId: item.lotId,
+      startTime: new Date(now.getTime() + item.startOffsetHours * hour),
+      endTime: new Date(now.getTime() + (item.startOffsetHours + item.durationHours) * hour),
+      estimatedCost: item.amount,
+      bookingStatus: item.bookingStatus,
+      paymentStatus: item.paymentStatus,
+      paymentMethod: item.paymentMethod,
+      slotStatus: "RESERVED",
+      referenceId: item.referenceId,
+    });
+  }
+
+  await createParkingRecord({
+    userId: appUsers[10].id,
+    vehicleId: vehicles["99A-66778"].id,
+    slotNumber: "E-1",
+    parkingLotId: parkingLot2.id,
+    checkInTime: new Date(now.getTime() - 90 * 60 * 1000),
+    actualCost: 0,
+    paymentStatus: "PENDING",
+    recordStatus: "CHECKED_IN",
+    paymentMethod: "CASH",
+  });
+
+  await createParkingRecord({
+    userId: appUsers[11].id,
+    vehicleId: vehicles["47P1-88901"].id,
+    slotNumber: "F-1",
+    parkingLotId: parkingLot2.id,
+    checkInTime: new Date(now.getTime() - 70 * 60 * 1000),
+    actualCost: 0,
+    paymentStatus: "PENDING",
+    recordStatus: "CHECKED_IN",
+    paymentMethod: "CASH",
+  });
+
+  await createParkingRecord({
+    userId: appUsers[8].id,
+    vehicleId: vehicles["43A-55667"].id,
+    slotNumber: "VIP-1",
+    parkingLotId: parkingLot3.id,
+    checkInTime: new Date(now.getTime() - 2 * hour),
+    actualCost: 0,
+    paymentStatus: "PENDING",
+    recordStatus: "CHECKED_IN",
+    paymentMethod: "CASH",
+  });
+
+  await createBooking({
+    userId: appUsers[3].id,
+    vehicleId: vehicles["51G-31313"].id,
+    slotNumber: "E-2",
+    parkingLotId: parkingLot2.id,
+    startTime: new Date(now.getTime() + 2 * hour),
+    endTime: new Date(now.getTime() + 6 * hour),
+    estimatedCost: 160000,
+    bookingStatus: "CONFIRMED",
+    paymentStatus: "SUCCESS",
+    paymentMethod: "VNPAY",
+    slotStatus: "RESERVED",
+    referenceId: "VNPAY-BOOKING-2001",
+  });
+
+  const pastScenarios = [
+    {
+      user: appUsers[1],
+      plate: "30H7-23456",
+      slot: "C-15",
+      lotId: parkingLot1.id,
+      startDaysAgo: 2,
+      durationHours: 3,
       amount: 30000,
-      method: "CASH",
-      status: "PENDING",
+      paymentStatus: "SUCCESS",
+      paymentMethod: "CASH",
+      booking: true,
+      referenceId: null,
     },
-  });
-  console.log("✅ Created payment 2 (linked to booking2):", payment2.id);
+    {
+      user: appUsers[5],
+      plate: "29A-11223",
+      slot: "B-15",
+      lotId: parkingLot1.id,
+      startDaysAgo: 4,
+      durationHours: 5,
+      amount: 250000,
+      paymentStatus: "SUCCESS",
+      paymentMethod: "VNPAY",
+      booking: false,
+      referenceId: "VNPAY-RECORD-3001",
+    },
+    {
+      user: appUsers[6],
+      plate: "14B7-55678",
+      slot: "F-2",
+      lotId: parkingLot2.id,
+      startDaysAgo: 6,
+      durationHours: 8,
+      amount: 40000,
+      paymentStatus: "REFUNDED",
+      paymentMethod: "VNPAY",
+      booking: false,
+      referenceId: "VNPAY-RECORD-3002",
+    },
+    {
+      user: appUsers[9],
+      plate: "18A-22446",
+      slot: "G-1",
+      lotId: parkingLot3.id,
+      startDaysAgo: 9,
+      durationHours: 6,
+      amount: 360000,
+      paymentStatus: "SUCCESS",
+      paymentMethod: "VNPAY",
+      booking: false,
+      referenceId: "VNPAY-RECORD-3003",
+    },
+  ];
 
-  // ===== CREATE MONTHLY PASS =====
-  const monthlyPass = await prisma.monthlyPass.create({
-    data: {
-      userId: user.id,
+  for (const item of pastScenarios) {
+    const startTime = new Date(now.getTime() - item.startDaysAgo * day);
+    const endTime = new Date(startTime.getTime() + item.durationHours * hour);
+    let bookingId = null;
+
+    if (item.booking) {
+      const booking = await createBooking({
+        userId: item.user.id,
+        vehicleId: vehicles[item.plate].id,
+        slotNumber: item.slot,
+        parkingLotId: item.lotId,
+        startTime,
+        endTime,
+        estimatedCost: item.amount,
+        bookingStatus: "COMPLETED",
+        paymentStatus: "SUCCESS",
+        paymentMethod: item.paymentMethod,
+      });
+      bookingId = booking.id;
+    }
+
+    await createParkingRecord({
+      userId: item.user.id,
+      vehicleId: vehicles[item.plate].id,
+      slotNumber: item.slot,
+      parkingLotId: item.lotId,
+      bookingId,
+      checkInTime: startTime,
+      checkOutTime: endTime,
+      actualCost: item.amount,
+      paymentStatus: item.paymentStatus,
+      recordStatus: "CHECKED_OUT",
+      paymentMethod: item.paymentMethod,
+      referenceId: item.referenceId,
+    });
+  }
+
+  const monthlyPasses = [
+    {
+      userId: appUsers[0].id,
       vehicleType: "CAR",
       startDate: new Date("2026-04-01"),
       endDate: new Date("2026-05-01"),
-      price: 1500000, // 1,500,000 VND/month (default CAR price)
+      price: 1500000,
       status: "ACTIVE",
-    },
-  });
-  // Link a payment to the monthly pass
-  await prisma.payment.create({
-    data: {
-      userId: user.id,
-      monthlyPassId: monthlyPass.id,
-      amount: 1500000,
       method: "CASH",
-      status: "SUCCESS", // already paid at registration
+      paymentStatus: "SUCCESS",
+      referenceId: "PASS-2026-04-U1",
     },
-  });
-  console.log("✅ Created monthly pass:", monthlyPass.id);
+    {
+      userId: appUsers[2].id,
+      vehicleType: "CAR",
+      startDate: new Date("2026-03-01"),
+      endDate: new Date("2026-04-01"),
+      price: 1400000,
+      status: "EXPIRED",
+      method: "VNPAY",
+      paymentStatus: "SUCCESS",
+      referenceId: "PASS-2026-03-U3",
+    },
+    {
+      userId: appUsers[4].id,
+      vehicleType: "MOTORBIKE",
+      startDate: new Date("2026-05-01"),
+      endDate: new Date("2026-06-01"),
+      price: 650000,
+      status: "CANCELLED",
+      method: "VNPAY",
+      paymentStatus: "REFUNDED",
+      referenceId: "PASS-2026-05-U5",
+    },
+  ];
 
+  for (const item of monthlyPasses) {
+    const pass = await prisma.monthlyPass.create({
+      data: {
+        userId: item.userId,
+        vehicleType: item.vehicleType,
+        startDate: item.startDate,
+        endDate: item.endDate,
+        price: item.price,
+        status: item.status,
+      },
+    });
+
+    await prisma.payment.create({
+      data: {
+        userId: item.userId,
+        monthlyPassId: pass.id,
+        amount: item.price,
+        method: item.method,
+        status: item.paymentStatus,
+        referenceId: item.referenceId,
+      },
+    });
+  }
+
+  const lot1Statuses = Object.values(slots).filter(
+    (slot) => slot.parkingLotId === parkingLot1.id
+  );
+  const lot1Occupied = lot1Statuses.filter((slot) => slot.status === "OCCUPIED").length;
+  const lot1Reserved = lot1Statuses.filter((slot) => slot.status === "RESERVED").length;
+  const lot1Maintenance = lot1Statuses.filter(
+    (slot) => slot.status === "MAINTENANCE"
+  ).length;
+  const lot1Utilized = lot1Occupied + lot1Reserved;
+  const lot1UtilizationRate = ((lot1Utilized / lot1Statuses.length) * 100).toFixed(1);
+
+  const allSlots = Object.values(slots);
+  const occupiedSlots = allSlots.filter((slot) => slot.status === "OCCUPIED").length;
+  const reservedSlots = allSlots.filter((slot) => slot.status === "RESERVED").length;
+  const maintenanceSlots = allSlots.filter((slot) => slot.status === "MAINTENANCE").length;
 
   console.log("\n🎉 Database seed completed successfully!\n");
-
-  // ===== DISPLAY SUMMARY =====
   console.log("📊 Summary:");
-  console.log(`   - Users: 2 (Admin, User)`);
-  console.log(`   - Parking Lot: 1`);
-  console.log(`   - Parking Slots: ${slots.length}`);
-  console.log(`   - Vehicles: 2`);
-  console.log(`   - Bookings: 2 (1 CONFIRMED + checked-in, 1 PENDING_PAYMENT)`);
-  console.log(`   - Parking Records: 1 (CHECKED_IN)`);
-  console.log(`   - Payments: 3 (2 booking + 1 monthly pass)`);
-  console.log(`   - Monthly Passes: 1 (CAR, ACTIVE)`);
+  console.log(`   - Users: ${createdUsers.length} (1 ADMIN + ${appUsers.length} USER)`);
+  console.log(`   - Vehicles: ${Object.keys(vehicles).length}`);
+  console.log(`   - Parking Lots: 3`);
+  console.log(`   - Parking Slots: ${allSlots.length}`);
+  console.log(`   - Occupied Slots: ${occupiedSlots}`);
+  console.log(`   - Reserved Slots: ${reservedSlots}`);
+  console.log(`   - Maintenance Slots: ${maintenanceSlots}`);
+  console.log(`   - Lot 1 utilization: ${lot1Utilized}/${lot1Statuses.length} (${lot1UtilizationRate}%)`);
+  console.log(`   - Lot 1 occupied/reserved/maintenance: ${lot1Occupied}/${lot1Reserved}/${lot1Maintenance}`);
+  console.log(`   - Monthly Passes: ${monthlyPasses.length}`);
 
+  console.log("\n🔐 Demo Credentials:");
+  console.log("   Admin     → admin@parking.com / admin123");
+  console.log("   Users     → user1@parking.com to user12@parking.com / user123");
 
-  console.log("🔐 Demo Credentials:");
-  console.log("   Admin    → admin@parking.com / admin123");
-
-  console.log("   User     → user@parking.com / user123\n");
+  void admin;
 }
 
 main()
   .then(async () => {
     await prisma.$disconnect();
   })
-  .catch(async (e) => {
-    console.error("❌ Seed error:", e);
+  .catch(async (error) => {
+    console.error("❌ Seed error:", error);
     await prisma.$disconnect();
     process.exit(1);
   });
