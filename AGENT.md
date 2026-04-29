@@ -1,387 +1,132 @@
-# AGENT.md — Frontend Integration Guide
+# Backend Agent Quickstart
 
-> This file is written for an AI agent building the frontend for the Parking Management System.
-> Read this entirely before writing a single line of frontend code.
+> Start here when working inside the `backend/` folder.
+> This file is intentionally short so you can understand the project fast without reading the whole codebase.
 
----
+## What This Folder Is
 
-## Backend Base URL
+This backend is a REST API for the Smart Parking Management System.
 
-```
-http://localhost:3000
-```
+- Runtime: Node.js with ES Modules
+- Framework: Express 5
+- ORM: Prisma
+- Database: PostgreSQL
+- Auth: JWT via httpOnly cookie and Bearer token
+- Validation: Zod
+- Payments: CASH and VNPay
 
-All API routes are prefixed with `/api`.
+Core modules already exist:
 
----
+- Auth
+- Users
+- Vehicles
+- Parking Lots
+- Parking Slots
+- Bookings
+- Parking Records
+- Payments
+- Monthly Passes
 
-## Authentication
+## Read Order
 
-The backend supports **two token delivery methods** (both work):
+Read only what your task needs.
 
-| Method | How | When to use |
-|---|---|---|
-| HttpOnly Cookie (`jwt`) | Sent automatically by browser | Production / secure flows |
-| `Authorization: Bearer <token>` | Manual header | Dev/testing |
+1. This file
+2. [Shared agent context](./docs/agents/shared-agent-context.md)
+3. [Backend folder structure](./docs/agents/backend-folder-structure.md)
+4. Task-specific files listed below
 
-**Login response** sets a cookie AND returns user data. On `GET /api/auth/me`, the backend reads whichever token is present.
+If you need deeper engineering rules, read [Backend agent guide](./docs/agents/backend-agent.md).
 
-> ⚠️ All requests to protected routes must be made with `credentials: 'include'` if using cookies, or with the `Authorization` header.
+## Fast Map
 
----
+- `src/app.js`: app setup and route mounting
+- `src/server.js`: process entrypoint
+- `prisma/schema.prisma`: data models, enums, and relationships
+- `src/routes/`: endpoint definitions
+- `src/controllers/`: business logic
+- `src/schemas/`: zod validation
+- `src/middleware/`: auth, authorize, validate, error handling
+- `src/utils/`: shared helpers like response formatters and VNPay utils
+- `docs/roles.md`: RBAC rules
 
-## Roles
+## If Your Task Is...
 
-There are three roles with different access levels:
+### Auth or session
 
-| Role | Who | Access |
-|---|---|---|
-| `USER` | Regular customer | Own data only |
-| `ADMIN` | System admin | Full CRUD everywhere |
+Read:
 
-Use `GET /api/auth/me` on app load to get the current user's role and conditionally render UI.
+- `src/routes/authRoutes.js`
+- `src/controllers/authController.js`
+- `src/middleware/authenticate.js`
+- `src/utils/generateToken.js`
 
----
+### User or vehicle management
 
-## Standard Response Shape
+Read:
 
-Every API response follows this consistent format:
+- `src/routes/userRoutes.js`
+- `src/controllers/userController.js`
+- `src/routes/vehicleRoutes.js`
+- `src/controllers/vehicleController.js`
 
-**Success:**
-```json
-{ "status": "success", "data": { ... } }
-```
+### Parking lots or slots
 
-**Error:**
-```json
-{ "status": "error", "message": "Human-readable error message" }
-```
+Read:
 
-Always check `response.status` field (not HTTP status code alone) to determine success/failure in the UI.
+- `src/routes/parkingLotRoutes.js`
+- `src/controllers/parkingLotController.js`
+- `src/routes/parkingSlotRoutes.js`
+- `src/controllers/parkingSlotController.js`
 
----
+### Bookings, check-in, checkout, or payments
 
-## API Reference
+Read:
 
-### 🔐 Auth — `/api/auth`
+- `src/routes/bookingRoutes.js`
+- `src/controllers/bookingController.js`
+- `src/routes/parkingRecordRoutes.js`
+- `src/controllers/parkingRecordController.js`
+- `src/routes/paymentRoutes.js`
+- `src/controllers/paymentController.js`
+- `src/jobs/paymentExpirationJob.js`
+- `src/utils/vnpay.js`
 
-| Method | Route | Auth? | Body | Returns |
-|---|---|---|---|---|
-| POST | `/register` | ❌ | `{ email, password, fullName, phone? }` | user object |
-| POST | `/login` | ❌ | `{ email, password }` | user + sets cookie |
-| POST | `/logout` | ❌ | — | clears cookie |
-| GET | `/me` | ✅ | — | `{ id, email, fullName, role }` |
+### Monthly passes
 
----
+Read:
 
-### 👤 Users — `/api/users`
+- `src/routes/monthlyPassRoutes.js`
+- `src/controllers/monthlyPassController.js`
+- `src/schemas/monthlyPassSchema.js`
 
-| Method | Route | Role | Notes |
-|---|---|---|---|
-| GET | `/me` | Any | Own profile |
-| PUT | `/me` | Any | Update own profile |
-| DELETE | `/me` | Any | Delete own account |
-| GET | `/` | ADMIN | All users |
-| POST | `/` | ADMIN | Create user (admin-created) |
-| PUT | `/:id` | ADMIN | Update any user |
-| DELETE | `/:id` | ADMIN | Delete any user |
+## Critical Business Rules
 
----
+- `CASH` booking creates a confirmed booking and reserves a slot, but payment is usually created at checkout.
+- `VNPAY` booking creates a pending payment immediately and stays pending until IPN success or failure.
+- Walk-in check-in requires an `AVAILABLE` slot.
+- Booking-backed check-in requires a `RESERVED` slot and a `CONFIRMED` booking.
+- Checkout releases the slot back to `AVAILABLE`.
+- Monthly passes are tied to one vehicle and one vehicle type.
 
-### 🚗 Vehicles — `/api/vehicles`
+## Engineering Rules
 
-| Method | Route | Role | Body / Notes |
-|---|---|---|---|
-| POST | `/` | Any | `{ vehicleType: "CAR"/"MOTORBIKE", plateNumber, color? }` |
-| GET | `/me` | Any | Own vehicles |
-| GET | `/` | ADMIN | All vehicles |
-| GET | `/:id` | ADMIN | Single vehicle |
-| PUT | `/:id` | Any (owner) | Update own vehicle |
-| DELETE | `/:id` | Any (owner) | Delete own vehicle |
-| PUT | `/:id/admin` | ADMIN | Admin override update |
-| DELETE | `/:id/admin` | ADMIN | Admin force delete |
-
----
-
-### 🏢 Parking Lots — `/api/parking-lots`
-
-| Method | Route | Role | Body / Notes |
-|---|---|---|---|
-| GET | `/` | Any | All lots with slot counts |
-| GET | `/:id` | Any | Single lot |
-| POST | `/` | ADMIN | `{ name, address, totalSlots, lotType, carHourlyRate, motorbikeHourlyRate, zones? }` |
-| PUT | `/:id` | ADMIN | Partial update |
-| DELETE | `/:id` | ADMIN | Only if no active bookings |
-
-**`lotType` enum:** `CAR_ONLY` | `MOTORBIKE_ONLY` | `BOTH`
-
----
-
-### 🅿️ Parking Slots — `/api/parking-slots`
-
-| Method | Route | Role | Body / Notes |
-|---|---|---|---|
-| GET | `/:id` | Any | Get slots by **lot ID** |
-| POST | `/` | ADMIN | Bulk create: `{ parkingLotId, slots: [{ zoneId, slotNumber, vehicleType }] }` |
-| PUT | `/:id/status` | ADMIN | `{ status: "AVAILABLE"/"RESERVED"/"OCCUPIED"/"MAINTENANCE" }` |
-| PUT | `/:id` | ADMIN | Update slot metadata |
-| DELETE | `/:id` | ADMIN | Delete slot |
-
-**Slot status flow:** `AVAILABLE ↔ RESERVED ↔ OCCUPIED`, `AVAILABLE ↔ MAINTENANCE`
-
----
-
-### 📋 Bookings — `/api/bookings`
-
-| Method | Route | Role | Body / Notes |
-|---|---|---|---|
-| POST | `/` | USER | Create booking (see flow below) |
-| GET | `/me` | USER | Own bookings |
-| DELETE | `/:id` | USER | Cancel own booking |
-| PUT | `/:id` | USER | Update own booking (time/slot) |
-| GET | `/` | ADMIN | All bookings |
-| GET | `/:id` | ADMIN | Single booking |
-| PUT | `/:id/admin` | ADMIN | Admin update |
-| PUT | `/:id/status` | ADMIN | Force status change |
-| DELETE | `/:id/admin` | ADMIN | Delete (only COMPLETED/CANCELLED) |
-
-**Create booking body:**
-```json
-{
-  "vehicleId": "cuid",
-  "parkingSlotId": "cuid",
-  "parkingLotId": "cuid",
-  "startTime": "2025-05-01T08:00:00Z",
-  "endTime": "2025-05-01T10:00:00Z",
-  "paymentMethod": "CASH"
-}
-```
-**Booking status enum:** `PENDING_PAYMENT` → `CONFIRMED` → `COMPLETED` | `CANCELLED`
-
-**What happens on `POST /bookings` (CASH):**
-1. Slot status → `RESERVED`
-2. Booking created with status `CONFIRMED`
-3. No payment is created yet
-
-**What happens on `DELETE /bookings/:id` (cancel):**
-1. Booking → `CANCELLED`
-2. Slot → `AVAILABLE`
-3. If a linked pending VNPAY payment exists, it becomes `FAILED`
-
-**What happens on `POST /bookings` (VNPAY):**
-1. Slot status → `RESERVED`
-2. Booking created with status `PENDING_PAYMENT`
-3. Payment record created with status `PENDING`, linked to booking
-4. IPN success later moves booking → `CONFIRMED`; failure/expiry moves booking → `CANCELLED`
-
----
-
-### 🅿️ Parking Records — `/api/records`
-
-| Method | Route | Role | Body / Notes |
-|---|---|---|---|
-| POST | `/checkin` | USER | Check in (walk-in or booked) |
-| PUT | `/:id/checkout` | USER | Check out + cost calculated |
-| GET | `/me` | USER | Own parking history |
-| GET | `/` | ADMIN | All records |
-
-**Check-in body:**
-```json
-{
-  "vehicleId": "cuid",
-  "parkingSlotId": "cuid",
-  "parkingLotId": "cuid",
-  "bookingId": "cuid (optional — omit for walk-in)"
-}
-```
-
-**Check-out body:**
-```json
-{
-  "paymentMethod": "CASH"
-}
-```
-
-**Check-in rules:**
-- Walk-in (no `bookingId`): slot must be `AVAILABLE`
-- Pre-booked (`bookingId` provided): slot must be `RESERVED`, booking must be `CONFIRMED`
-- After check-in: slot → `OCCUPIED`
-
-**After check-out:**
-- Actual cost calculated from real time delta × hourly rate
-- Slot → `AVAILABLE`
-- Walk-in: create one `CASH` payment linked to `parkingRecordId`
-- Cash booking: create one `CASH` payment linked to `bookingId`
-- VNPAY booking: reuse existing booking payment and mark/update it as `SUCCESS`
-- Booking-backed sessions are marked `COMPLETED` at checkout, not check-in
-
----
-
-### 💳 Payments — `/api/payments`
-
-| Method | Route | Role | Notes |
-|---|---|---|---|
-| GET | `/me` | USER | Own payments |
-| GET | `/` | ADMIN | All payments |
-| GET | `/user/:userId` | ADMIN | Payments by user |
-| GET | `/:id` | ADMIN | Single payment |
-| POST | `/` | ADMIN | Manual payment entry |
-| PUT | `/:id/status` | ADMIN | `{ status: "SUCCESS"/"FAILED"/"REFUNDED" }` |
-| GET | `/vnpay-ipn` | 🌐 PUBLIC | VNPay webhook (no auth) |
-
-**Payment status flow:** `PENDING → SUCCESS → REFUNDED` | `PENDING → FAILED`
-
-**Payment method enum:** `CASH` | `VNPAY`
-
-> Payments are auto-created only when money should exist in the system:
-> - VNPAY bookings: create `PENDING` at booking time
-> - Walk-ins / cash bookings: create `SUCCESS` only at checkout
-> - Monthly passes: created during purchase/renewal
-> Admin can still create manual entries for reconciliation.
-
----
-
-### 🎫 Monthly Passes — `/api/monthly-passes`
-
-| Method | Route | Role | Body |
-|---|---|---|---|
-| POST | `/` | USER | `{ vehicleType, startDate, endDate }` |
-| GET | `/me` | USER | Own passes |
-| PUT | `/:id/renew` | USER | `{ endDate }` |
-| DELETE | `/:id` | USER | Cancel own pass |
-| GET | `/` | ADMIN | All passes |
-| PUT | `/price` | ADMIN | `{ vehicleType, price }` |
-| PUT | `/:id/status` | ADMIN | `{ status }` |
-
-**Pass status enum:** `ACTIVE` | `EXPIRED` | `CANCELLED`
-
----
-
-## Data Models (Key Fields)
-
-### User
-```ts
-{ id, email, fullName, phone, role: "ADMIN"|"USER", createdAt }
-```
-
-### Vehicle
-```ts
-{ id, userId, plateNumber, vehicleType: "CAR"|"MOTORBIKE", color }
-```
-
-### ParkingLot
-```ts
-{ id, name, address, totalSlots, lotType, carHourlyRate, motorbikeHourlyRate, zones }
-```
-
-### ParkingSlot
-```ts
-{ id, parkingLotId, zoneId, slotNumber, vehicleType, status: "AVAILABLE"|"RESERVED"|"OCCUPIED"|"MAINTENANCE" }
-```
-
-### Booking
-```ts
-{
-  id, userId, vehicleId, parkingSlotId, parkingLotId,
-  startTime, endTime, estimatedCost,
-  status: "PENDING_PAYMENT"|"CONFIRMED"|"COMPLETED"|"CANCELLED"
-}
-```
-
-### Payment
-```ts
-{
-  id, userId, bookingId?, monthlyPassId?, parkingRecordId?,
-  amount, method: "CASH"|"VNPAY",
-  status: "PENDING"|"SUCCESS"|"FAILED"|"REFUNDED",
-  referenceId?
-}
-```
-
-### ParkingRecord
-```ts
-{
-  id, userId, vehicleId, parkingLotId, parkingSlotId, bookingId?,
-  checkInTime, checkOutTime?, actualCost,
-  paymentStatus: "PENDING"|"SUCCESS"|"FAILED"|"REFUNDED",
-  status: "CHECKED_IN"|"CHECKED_OUT"
-}
-```
-
-### MonthlyPass
-```ts
-{ id, userId, vehicleType, startDate, endDate, price, status: "ACTIVE"|"EXPIRED"|"CANCELLED" }
-```
-
----
-
-## CORS Configuration
-
-Backend allows these origins by default:
-```
-http://localhost:3001
-http://127.0.0.1:3001
-process.env.FRONTEND_URL
-```
-
-> Run your frontend on port **3001**, or add your dev URL to `FRONTEND_URL` in the backend `.env`.
-
-All requests that use cookies must include `credentials: 'include'`.
-
----
-
-## Common Frontend Patterns
-
-**Axios setup:**
-```js
-const api = axios.create({
-  baseURL: 'http://localhost:3000/api',
-  withCredentials: true, // for cookie auth
-});
-```
-
-**Fetch setup:**
-```js
-fetch('/api/...', {
-  credentials: 'include',
-  headers: { 'Content-Type': 'application/json' },
-});
-```
-
-**Error handling pattern:**
-```js
-const res = await api.post('/bookings', payload);
-if (res.data.status === 'error') {
-  showToast(res.data.message); // always a human-readable string
-}
-```
-
----
-
-## Suggested Page Structure
-
-| Page | Role | Key API calls |
-|---|---|---|
-| Login / Register | Public | `POST /auth/login`, `POST /auth/register` |
-| Dashboard | All | `GET /auth/me` |
-| Browse Lots | All | `GET /parking-lots`, `GET /parking-slots/:lotId` |
-| Make Booking | USER | `POST /bookings` |
-| My Bookings | USER | `GET /bookings/me` |
-| Check In | USER | `POST /records/checkin` |
-| Check Out | USER | `PUT /records/:id/checkout` |
-| My Payments | USER | `GET /payments/me` |
-| My Passes | USER | `GET /monthly-passes/me` |
-| Admin Dashboard | ADMIN | `GET /users`, `GET /bookings`, `GET /payments` |
-| Admin Parking Mgmt | ADMIN | `GET /parking-lots`, `POST /parking-slots` |
-
----
-
-## Notes for the AI Agent
-
-1. **IDs are CUIDs** — always treat them as opaque strings, never numbers.
-2. **Monetary values** are `Decimal(10,2)` from Prisma — they come as strings in JSON (e.g. `"25.50"`). Parse with `parseFloat()` for display.
-3. **Dates** are ISO 8601 strings. Always send times in UTC (`toISOString()`).
-4. **The slot `:id` in `GET /parking-slots/:id` is the parking LOT id**, not a slot id. It returns all slots for that lot.
-5. **Do not assume every booking has a payment row** — cash bookings intentionally have no payment until checkout.
-6. **VNPay is active for bookings** — pending bookings can later become `CONFIRMED` or `CANCELLED`.
-7. **Monthly pass check-in** — the backend auto-applies an active compatible monthly pass; clients do not send `monthlyPassId` in check-in payloads.
+- Follow `route -> middleware -> controller -> prisma`.
+- Import Prisma only from `src/config/db.js`.
+- Use `formatSuccess` and `formatError` for responses.
+- Use `asyncHandler` for async controllers.
+- Use `prisma.$transaction()` for multi-step state changes.
+- Do not create orphaned payments.
+- Do not assume cash bookings already have a payment record.
+
+## What Frontend Depends On
+
+The frontend relies on these backend contracts staying stable:
+
+- auth via cookie or Bearer token
+- `{ status, data }` and `{ status, message }` response shape
+- booking, payment, slot, and monthly pass statuses
+- `paymentUrl` returned for VNPay flows
+- `GET /api/auth/me` for app bootstrap
+
+If you change any of those, also update the shared agent context.

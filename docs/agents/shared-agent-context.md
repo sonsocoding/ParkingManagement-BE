@@ -1,0 +1,130 @@
+# Shared Agent Context
+
+> This file is the contract both backend and frontend agents should trust.
+
+## System Overview
+
+The project is a smart parking management system with two main applications:
+
+- `backend/`: REST API and business rules
+- `frontend/`: React client for users and admins
+
+Backend owns truth for:
+
+- authentication
+- authorization
+- booking state
+- payment state
+- slot availability
+- monthly pass lifecycle
+
+Frontend owns:
+
+- route flow
+- form UX
+- loading, empty, and error states
+- VNPay browser redirects and return page behavior
+
+## Shared Runtime Assumptions
+
+- Backend base URL: `http://localhost:3000`
+- API base path: `/api`
+- Frontend dev URL: `http://localhost:5173`
+- Frontend usually calls backend with `VITE_API_URL=http://localhost:3000/api`
+
+## Auth Contract
+
+The system supports both:
+
+- httpOnly cookie auth
+- `Authorization: Bearer <token>`
+
+Frontend should prefer cookie auth in browser flows and send credentials when needed.
+
+Backend should keep `GET /api/auth/me` compatible because frontend uses it to restore session state.
+
+## Response Contract
+
+Success:
+
+```json
+{ "status": "success", "data": { } }
+```
+
+Error:
+
+```json
+{ "status": "error", "message": "Human-readable error message" }
+```
+
+Do not silently change this shape on one side without updating the other side.
+
+## Roles
+
+- `USER`: owns only personal resources and user flows
+- `ADMIN`: full system control
+
+## Shared Statuses
+
+### Booking
+
+- `PENDING_PAYMENT`
+- `CONFIRMED`
+- `COMPLETED`
+- `CANCELLED`
+
+### Payment
+
+- `PENDING`
+- `SUCCESS`
+- `FAILED`
+- `REFUNDED`
+
+### Parking Slot
+
+- `AVAILABLE`
+- `RESERVED`
+- `OCCUPIED`
+- `MAINTENANCE`
+
+### Monthly Pass
+
+- `ACTIVE`
+- `EXPIRED`
+- `CANCELLED`
+
+## Shared Flow Rules
+
+### Booking with CASH
+
+- Create booking
+- Reserve slot
+- Mark booking `CONFIRMED`
+- Create payment later at checkout if needed
+
+### Booking with VNPay
+
+- Create booking
+- Reserve slot
+- Create pending payment
+- Return `paymentUrl`
+- IPN success confirms booking
+- Failure or expiry cancels booking and releases slot
+
+### Check-in and checkout
+
+- Walk-in check-in uses an `AVAILABLE` slot
+- Booking-backed check-in uses a `RESERVED` slot plus confirmed booking
+- Checkout returns slot to `AVAILABLE`
+
+### Monthly pass
+
+- One active pass per vehicle at a time
+- Vehicle ownership must match the requesting user
+- VNPay may be used for purchase or renewal
+
+## Coordination Rules
+
+- If backend changes route shape, status names, required fields, or auth behavior, update this file.
+- If frontend depends on a new backend field for rendering or navigation, update this file.
+- If a change affects VNPay redirect or return handling, both sides should review it.
