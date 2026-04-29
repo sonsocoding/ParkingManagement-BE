@@ -201,6 +201,7 @@ model Payment {
   method          PaymentMethod
   status          PaymentStatus @default(PENDING)
   referenceId     String? // transaction ID from payment gateway
+  metadata        Json?
 
   // Relations
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -250,8 +251,8 @@ model MonthlyPass {
 }
 
 enum PassStatus {
+  PENDING_PAYMENT
   ACTIVE
   EXPIRED
   CANCELLED
 }
-

@@ -1,7 +1,7 @@
 import { prisma } from "../config/db.js";
 
-const DEFAULT_INTERVAL_MS = 5 * 60 * 1000;
-const DEFAULT_EXPIRATION_MS = 15 * 60 * 1000;
+const DEFAULT_INTERVAL_MS = 5 * 60 * 1000; // check db every 5 mins
+const DEFAULT_EXPIRATION_MS = 15 * 60 * 1000; // clean vnpay if pending for 15 mins
 
 let paymentExpirationTimer = null;
 
@@ -27,6 +27,7 @@ const expirePendingVnpayPayments = async () => {
     },
     include: {
       booking: true,
+      monthlyPass: true,
     },
   });
 
@@ -64,6 +65,21 @@ const expirePendingVnpayPayments = async () => {
             where: { id: currentBooking.parkingSlotId },
             data: {
               status: "AVAILABLE",
+            },
+          });
+        }
+      }
+
+      if (payment.monthlyPassId) {
+        const currentPass = await tx.monthlyPass.findUnique({
+          where: { id: payment.monthlyPassId },
+        });
+
+        if (currentPass && currentPass.status === "PENDING_PAYMENT") {
+          await tx.monthlyPass.update({
+            where: { id: currentPass.id },
+            data: {
+              status: "CANCELLED",
             },
           });
         }

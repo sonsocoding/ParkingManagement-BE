@@ -51,15 +51,32 @@ Booking created with PENDING_PAYMENT → VNPay payment row created (PENDING)
 → IPN failure or 15-minute expiry marks payment FAILED, cancels booking, releases slot
 ```
 
+**Monthly Pass VNPay Flow**
+```
+Pass purchase created with PENDING_PAYMENT → VNPay payment URL returned
+→ IPN success activates pass (or applies renewal)
+→ IPN failure / expiry fails payment and cancels pending pass purchase
+```
+
 ## Getting Started
 
 ```bash
 npm install
-# configure .env: DATABASE_URL, JWT_SECRET, FRONTEND_URL
+# configure .env: DATABASE_URL, JWT_SECRET, FRONTEND_URL, BACKEND_URL,
+# VNPAY_TMN_CODE, VNPAY_SECURE_SECRET, VNPAY_RETURN_URL
 npx prisma migrate dev
 npm run seed     # seed admin/user + sample data
 npm run dev
 ```
+
+## VNPay Sandbox Notes
+
+- Set your VNPay sandbox `Return URL` to `VNPAY_RETURN_URL`
+- If you are using the Vite frontend in this repo, that should normally be `http://localhost:5173/payments/vnpay-return`
+- Point VNPay sandbox `IPN URL` to `GET /api/payments/vnpay-ipn` on your backend
+- Booking creation with `"paymentMethod": "VNPAY"` now returns `paymentUrl`
+- Monthly pass purchase and renewal also accept `"paymentMethod": "VNPAY"` and return `paymentUrl`
+- A public verifier endpoint is available at `GET /api/payments/vnpay-return`
 
 ## Project Structure
 

@@ -146,6 +146,11 @@ const checkIn = asyncHandler(async (req, res) => {
       userId,
       vehicleType: vehicle.vehicleType,
       status: "ACTIVE",
+      payment: {
+        is: {
+          status: "SUCCESS",
+        },
+      },
     },
   });
 

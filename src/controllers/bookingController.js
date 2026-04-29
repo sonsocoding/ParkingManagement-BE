@@ -2,6 +2,7 @@ import { prisma } from "../config/db.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatSuccess, formatError } from "../utils/formatResponse.js";
 import { createBookingSchema } from "../schemas/bookingSchema.js";
+import { buildVnpayPaymentUrl } from "../utils/vnpay.js";
 
 const VALID_TRANSITIONS = {
   PENDING_PAYMENT: ["CONFIRMED", "CANCELLED"],
@@ -114,6 +115,8 @@ const createBooking = asyncHandler(async (req, res) => {
       (vehicle.vehicleType === "CAR" ? parkingLot.carHourlyRate : parkingLot.motorbikeHourlyRate) *
       hours;
 
+    // if pay by cash -> booking status = CONFIRMED,
+    // if pay by VNPAY -> booking status = PENDING_PAYMENT & create payment with PENDING status
     const bookingStatus = paymentMethod === "VNPAY" ? "PENDING_PAYMENT" : "CONFIRMED";
 
     const booking = await tx.booking.create({
@@ -137,6 +140,8 @@ const createBooking = asyncHandler(async (req, res) => {
     });
 
     let payment = null;
+    let paymentUrl = null;
+    let paymentExpiresAt = null;
     if (paymentMethod === "VNPAY") {
       payment = await tx.payment.create({
         data: {
@@ -145,11 +150,24 @@ const createBooking = asyncHandler(async (req, res) => {
           amount: estimatedCost,
           method: "VNPAY",
           status: "PENDING",
+          metadata: {
+            type: "BOOKING",
+            bookingId: booking.id,
+          },
         },
       });
+
+      const vnpayPayload = buildVnpayPaymentUrl({
+        req,
+        paymentId: payment.id,
+        amount: estimatedCost,
+        orderInfo: `Booking payment ${booking.id}`,
+      });
+      paymentUrl = vnpayPayload.paymentUrl;
+      paymentExpiresAt = vnpayPayload.expiresAt;
     }
 
-    return { booking, updatedSlot, payment };
+    return { booking, updatedSlot, payment, paymentUrl, paymentExpiresAt };
   });
   const responseData = {
     booking: formatBooking(result.booking),
@@ -157,6 +175,8 @@ const createBooking = asyncHandler(async (req, res) => {
   };
   if (result.payment) {
     responseData.payment = result.payment;
+    responseData.paymentUrl = result.paymentUrl;
+    responseData.paymentExpiresAt = result.paymentExpiresAt;
   }
 
   return res.status(201).json(formatSuccess(responseData));

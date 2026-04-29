@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 const vehicleTypeEnum = z.enum(["CAR", "MOTORBIKE"]);
-const passStatusEnum = z.enum(["ACTIVE", "EXPIRED", "CANCELLED"]);
+const passStatusEnum = z.enum(["PENDING_PAYMENT", "ACTIVE", "EXPIRED", "CANCELLED"]);
+const onlinePaymentMethodEnum = z.literal("VNPAY");
 
 // POST /api/monthly-passes — user registers a new pass
 export const registerPassSchema = z.object({
@@ -11,6 +12,7 @@ export const registerPassSchema = z.object({
       .int()
       .min(1, "Minimum 1 month")
       .max(12, "Maximum 12 months at once"),
+    paymentMethod: onlinePaymentMethodEnum.default("VNPAY"),
   }),
 });
 
@@ -21,6 +23,7 @@ export const renewPassSchema = z.object({
       .int()
       .min(1, "Minimum 1 month")
       .max(12, "Maximum 12 months at once"),
+    paymentMethod: onlinePaymentMethodEnum.default("VNPAY"),
   }),
 });
 

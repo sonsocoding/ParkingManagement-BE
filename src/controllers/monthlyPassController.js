@@ -1,31 +1,36 @@
 import { prisma } from "../config/db.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatSuccess, formatError } from "../utils/formatResponse.js";
+import { buildVnpayPaymentUrl } from "../utils/vnpay.js";
 
 // System-wide monthly pass prices — admin can update these via PUT /api/monthly-passes/price.
 // Stored in-memory; in production you'd store these in a DB settings table.
 export const PASS_PRICES = {
-  CAR: 1500000,       // 1,500,000 VND/month
-  MOTORBIKE: 300000,  // 300,000 VND/month
+  CAR: 1500000, // 1,500,000 VND/month
+  MOTORBIKE: 300000, // 300,000 VND/month
 };
 
-// ─── USER ───────────────────────────────────────────────────────────────────
-
-// POST /api/monthly-passes
-// Register a new monthly pass. One pass per vehicle type per user (no duplicates).
 // This pass can be used by any vehicle of the matched type owned by the user, but only one vehicle at a time.
 const registerMonthlyPass = asyncHandler(async (req, res) => {
   const { vehicleType, months } = req.body;
   const userId = req.user.id;
 
-  // Check: user must not already have an ACTIVE pass for this vehicle type
+  // Check: user must not already have an ACTIVE or pending-payment pass for this vehicle type
   const existingPass = await prisma.monthlyPass.findFirst({
-    where: { userId, vehicleType, status: "ACTIVE" },
+    where: {
+      userId,
+      vehicleType,
+      status: { in: ["ACTIVE", "PENDING_PAYMENT"] },
+    },
   });
   if (existingPass) {
-    return res.status(409).json(
-      formatError(`You already have an ACTIVE ${vehicleType} pass. Renew it instead.`)
-    );
+    return res
+      .status(409)
+      .json(
+        formatError(
+          `You already have an ${existingPass.status} ${vehicleType} pass. Renew it instead.`,
+        ),
+      );
   }
 
   const pricePerMonth = PASS_PRICES[vehicleType];
@@ -34,7 +39,7 @@ const registerMonthlyPass = asyncHandler(async (req, res) => {
   const endDate = new Date(startDate);
   endDate.setMonth(endDate.getMonth() + months);
 
-  const { monthlyPass, payment } = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const monthlyPass = await tx.monthlyPass.create({
       data: {
         userId,
@@ -42,7 +47,7 @@ const registerMonthlyPass = asyncHandler(async (req, res) => {
         startDate,
         endDate,
         price: totalPrice,
-        status: "ACTIVE",
+        status: "PENDING_PAYMENT",
       },
     });
 
@@ -51,20 +56,42 @@ const registerMonthlyPass = asyncHandler(async (req, res) => {
         userId,
         monthlyPassId: monthlyPass.id,
         amount: totalPrice,
-        method: "CASH",
+        method: "VNPAY",
         status: "PENDING",
+        metadata: {
+          type: "MONTHLY_PASS_PURCHASE",
+          monthlyPassId: monthlyPass.id,
+        },
       },
     });
 
-    return { monthlyPass, payment };
+    let paymentUrl = null;
+    let paymentExpiresAt = null;
+    const vnpayPayload = buildVnpayPaymentUrl({
+      req,
+      paymentId: payment.id,
+      amount: totalPrice,
+      orderInfo: `Monthly pass purchase ${monthlyPass.id}`,
+    });
+    paymentUrl = vnpayPayload.paymentUrl;
+    paymentExpiresAt = vnpayPayload.expiresAt;
+
+    return { monthlyPass, payment, paymentUrl, paymentExpiresAt };
   });
 
   return res.status(201).json(
-    formatSuccess({ monthlyPass, payment }, "Monthly pass registered successfully")
+    formatSuccess(
+      {
+        monthlyPass: result.monthlyPass,
+        payment: result.payment,
+        paymentUrl: result.paymentUrl,
+        paymentExpiresAt: result.paymentExpiresAt,
+      },
+      "Monthly pass registered successfully",
+    ),
   );
 });
 
-// GET /api/monthly-passes/me
 // Get all passes belonging to the current user
 const getOwnMonthlyPasses = asyncHandler(async (req, res) => {
   const userId = req.user.id;
@@ -80,7 +107,6 @@ const getOwnMonthlyPasses = asyncHandler(async (req, res) => {
   return res.status(200).json(formatSuccess({ monthlyPasses }));
 });
 
-// PUT /api/monthly-passes/:id/renew
 // Renew an existing pass by extending endDate. Creates a new payment for the extension.
 const renewMonthlyPass = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -97,46 +123,59 @@ const renewMonthlyPass = asyncHandler(async (req, res) => {
   if (monthlyPass.status === "CANCELLED") {
     return res.status(400).json(formatError("Cannot renew a cancelled pass"));
   }
+  if (monthlyPass.status === "PENDING_PAYMENT") {
+    return res
+      .status(400)
+      .json(formatError("Cannot renew a pass that is waiting for payment"));
+  }
 
   const pricePerMonth = PASS_PRICES[monthlyPass.vehicleType];
   const extensionPrice = pricePerMonth * months;
 
   // Extend from current endDate (or now if expired)
-  const base = monthlyPass.endDate > new Date() ? new Date(monthlyPass.endDate) : new Date();
+  const base =
+    monthlyPass.endDate > new Date()
+      ? new Date(monthlyPass.endDate)
+      : new Date();
   const newEndDate = new Date(base);
   newEndDate.setMonth(newEndDate.getMonth() + months);
 
-  const { monthlyPass: renewedMonthlyPass, payment } = await prisma.$transaction(async (tx) => {
-    const monthlyPass = await tx.monthlyPass.update({
-      where: { id },
-      data: {
-        endDate: newEndDate,
-        status: "ACTIVE",
-        price: { increment: extensionPrice },
+  const payment = await prisma.payment.create({
+    data: {
+      userId,
+      amount: extensionPrice,
+      method: "VNPAY",
+      status: "PENDING",
+      metadata: {
+        type: "MONTHLY_PASS_RENEWAL",
+        monthlyPassId: id,
+        months,
+        extensionPrice,
+        newEndDate: newEndDate.toISOString(),
       },
-    });
+    },
+  });
 
-    // New payment record for this renewal; the original payment from registration stays
-    const payment = await tx.payment.create({
-      data: {
-        userId,
-        amount: extensionPrice,
-        method: "CASH",
-        status: "PENDING",
-        // Note: monthlyPassId @unique — only one payment can be linked per pass.
-        // Renewal payments are walk-in payments (no monthlyPassId link) to avoid constraint conflict.
-      },
-    });
-
-    return { monthlyPass, payment };
+  const { paymentUrl, expiresAt } = buildVnpayPaymentUrl({
+    req,
+    paymentId: payment.id,
+    amount: extensionPrice,
+    orderInfo: `Monthly pass renewal ${id}`,
   });
 
   return res.status(200).json(
-    formatSuccess({ monthlyPass: renewedMonthlyPass, payment }, "Monthly pass renewed successfully")
+    formatSuccess(
+      {
+        monthlyPass,
+        payment,
+        paymentUrl,
+        paymentExpiresAt: expiresAt,
+      },
+      "Monthly pass renewal initialized successfully",
+    ),
   );
 });
 
-// DELETE /api/monthly-passes/:id  (user cancel own)
 const cancelOwnMonthlyPass = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
@@ -149,7 +188,11 @@ const cancelOwnMonthlyPass = asyncHandler(async (req, res) => {
     return res.status(403).json(formatError("This is not your pass"));
   }
   if (monthlyPass.status !== "ACTIVE") {
-    return res.status(400).json(formatError(`Cannot cancel a pass with status ${monthlyPass.status}`));
+    return res
+      .status(400)
+      .json(
+        formatError(`Cannot cancel a pass with status ${monthlyPass.status}`),
+      );
   }
 
   const cancelledMonthlyPass = await prisma.monthlyPass.update({
@@ -157,14 +200,18 @@ const cancelOwnMonthlyPass = asyncHandler(async (req, res) => {
     data: { status: "CANCELLED" },
   });
 
-  return res.status(200).json(
-    formatSuccess({ monthlyPass: cancelledMonthlyPass }, "Monthly pass cancelled")
-  );
+  return res
+    .status(200)
+    .json(
+      formatSuccess(
+        { monthlyPass: cancelledMonthlyPass },
+        "Monthly pass cancelled",
+      ),
+    );
 });
 
 // ─── ADMIN ─────────────────────────────────────────────────────────
 
-// GET /api/monthly-passes
 const getAllMonthlyPasses = asyncHandler(async (req, res) => {
   const monthlyPasses = await prisma.monthlyPass.findMany({
     include: {
@@ -177,9 +224,6 @@ const getAllMonthlyPasses = asyncHandler(async (req, res) => {
   return res.status(200).json(formatSuccess({ monthlyPasses }));
 });
 
-// ─── ADMIN ONLY ───────────────────────────────────────────────────────────────
-
-// PUT /api/monthly-passes/:id/status — admin overrides pass status
 const updatePassStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -194,12 +238,16 @@ const updatePassStatus = asyncHandler(async (req, res) => {
     data: { status },
   });
 
-  return res.status(200).json(
-    formatSuccess({ monthlyPass: monthlyPassResult }, `Pass status updated to ${status}`)
-  );
+  return res
+    .status(200)
+    .json(
+      formatSuccess(
+        { monthlyPass: monthlyPassResult },
+        `Pass status updated to ${status}`,
+      ),
+    );
 });
 
-// PUT /api/monthly-passes/price — admin sets system-wide monthly prices
 const updatePassPrice = asyncHandler(async (req, res) => {
   const { carMonthlyPrice, motorbikeMonthlyPrice } = req.body;
 
@@ -210,12 +258,14 @@ const updatePassPrice = asyncHandler(async (req, res) => {
     PASS_PRICES.MOTORBIKE = motorbikeMonthlyPrice;
   }
 
-  return res.status(200).json(
-    formatSuccess(
-      { currentPrices: PASS_PRICES },
-      "Pass prices updated successfully"
-    )
-  );
+  return res
+    .status(200)
+    .json(
+      formatSuccess(
+        { currentPrices: PASS_PRICES },
+        "Pass prices updated successfully",
+      ),
+    );
 });
 
 export {

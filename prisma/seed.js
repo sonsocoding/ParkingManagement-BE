@@ -642,7 +642,7 @@ async function main() {
       endDate: new Date("2026-05-01"),
       price: 1500000,
       status: "ACTIVE",
-      method: "CASH",
+      method: "VNPAY",
       paymentStatus: "SUCCESS",
       referenceId: "PASS-2026-04-U1",
     },
@@ -667,6 +667,17 @@ async function main() {
       method: "VNPAY",
       paymentStatus: "REFUNDED",
       referenceId: "PASS-2026-05-U5",
+    },
+    {
+      userId: appUsers[6].id,
+      vehicleType: "MOTORBIKE",
+      startDate: new Date("2026-05-10"),
+      endDate: new Date("2026-06-10"),
+      price: 300000,
+      status: "PENDING_PAYMENT",
+      method: "VNPAY",
+      paymentStatus: "PENDING",
+      referenceId: "PASS-2026-05-U7-PENDING",
     },
   ];
 
