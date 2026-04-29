@@ -1,7 +1,7 @@
 import { prisma } from "../config/db.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatSuccess, formatError } from "../utils/formatResponse.js";
-import { verifyVnpayResponse } from "../utils/vnpay.js";
+import { verifyVnpayIpn, verifyVnpayReturn } from "../utils/vnpay.js";
 
 const paymentInclude = {
   user: {
@@ -27,6 +27,17 @@ const VALID_TRANSITIONS = {
 
 const respondToVnpay = (res, RspCode, Message) => {
   return res.status(200).json({ RspCode, Message });
+};
+
+const getVnpayPayment = async (paymentId) => {
+  return prisma.payment.findUnique({
+    where: { id: String(paymentId) },
+    include: {
+      ...paymentInclude,
+      booking: true,
+      monthlyPass: true,
+    },
+  });
 };
 
 const handleSuccessfulPayment = async (payment, verifiedResponse) => {
@@ -245,27 +256,38 @@ const updatePaymentStatus = asyncHandler(async (req, res) => {
     .json(formatSuccess({ payment }, "Payment updated successfully"));
 });
 
-// browser return, verify signature but does not do final DB change
+// browser return, verify signature and reconcile pending payment if IPN has not arrived yet
 const handleVnpayReturn = asyncHandler(async (req, res) => {
-  const verifiedResponse = verifyVnpayResponse(req.query);
+  const verifiedResponse = verifyVnpayReturn(req.query);
 
   if (!verifiedResponse.isVerified) {
     return res.status(400).json(formatError(verifiedResponse.message));
   }
 
-  const payment = await prisma.payment.findUnique({
-    where: { id: String(verifiedResponse.vnp_TxnRef) },
-    include: paymentInclude,
-  });
+  const payment = await getVnpayPayment(verifiedResponse.vnp_TxnRef);
 
   if (!payment) {
     return res.status(404).json(formatError("Payment not found"));
   }
 
+  if (Number(payment.amount) !== Number(verifiedResponse.vnp_Amount)) {
+    return res.status(400).json(formatError("Invalid amount"));
+  }
+
+  if (payment.status === "PENDING") {
+    if (verifiedResponse.isSuccess) {
+      await handleSuccessfulPayment(payment, verifiedResponse);
+    } else {
+      await handleFailedPayment(payment);
+    }
+  }
+
+  const refreshedPayment = await getVnpayPayment(verifiedResponse.vnp_TxnRef);
+
   return res.status(200).json(
     formatSuccess(
       {
-        payment,
+        payment: refreshedPayment,
         vnpay: verifiedResponse,
       },
       verifiedResponse.isSuccess
@@ -277,7 +299,7 @@ const handleVnpayReturn = asyncHandler(async (req, res) => {
 
 // server-to-server callback, update DB
 const handleVnpayIpn = asyncHandler(async (req, res) => {
-  const verifiedResponse = verifyVnpayResponse(req.query);
+  const verifiedResponse = verifyVnpayIpn(req.query);
   if (!verifiedResponse.isVerified) {
     return respondToVnpay(
       res,
@@ -286,13 +308,7 @@ const handleVnpayIpn = asyncHandler(async (req, res) => {
     );
   }
 
-  const payment = await prisma.payment.findUnique({
-    where: { id: String(verifiedResponse.vnp_TxnRef) },
-    include: {
-      booking: true,
-      monthlyPass: true,
-    },
-  });
+  const payment = await getVnpayPayment(verifiedResponse.vnp_TxnRef);
   if (!payment) {
     return respondToVnpay(res, "01", "Order not found");
   }

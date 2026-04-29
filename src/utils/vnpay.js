@@ -1,4 +1,4 @@
-import { VNPay, ignoreLogger, dateFormat } from "vnpay";
+import { VNPay, ignoreLogger, dateFormat, getDateInGMT7 } from "vnpay";
 import { HashAlgorithm, ProductCode, VnpLocale } from "vnpay/enums";
 
 const DEFAULT_EXPIRE_MINUTES = 15;
@@ -55,7 +55,19 @@ const getClientIp = (req) => {
     return forwarded.split(",")[0].trim();
   }
 
-  return req.ip || req.socket?.remoteAddress || "127.0.0.1";
+  const ip = req.ip || req.socket?.remoteAddress || "127.0.0.1";
+  if (ip === "::1") {
+    return "127.0.0.1";
+  }
+  if (ip.startsWith("::ffff:")) {
+    return ip.slice(7);
+  }
+
+  return ip;
+};
+
+const toVnpayDateNumber = (date) => {
+  return dateFormat(getDateInGMT7(date), "yyyyMMddHHmmss");
 };
 
 let cachedClient = null;
@@ -85,6 +97,7 @@ const buildVnpayPaymentUrl = ({
   orderType = ProductCode.Other,
 }) => {
   const expiresAt = new Date(Date.now() + getExpireMinutes() * 60 * 1000);
+  const createdAt = new Date();
   const paymentUrl = getVnpayClient().buildPaymentUrl({
     vnp_TxnRef: paymentId, // this is how vnpay later point back to exact payment in db
     vnp_Amount: Number(amount),
@@ -94,7 +107,8 @@ const buildVnpayPaymentUrl = ({
     vnp_OrderType: orderType,
     vnp_Locale:
       process.env.VNPAY_LOCALE === VnpLocale.EN ? VnpLocale.EN : VnpLocale.VN,
-    vnp_ExpireDate: dateFormat(expiresAt, "yyyyMMddHHmmss"),
+    vnp_CreateDate: toVnpayDateNumber(createdAt),
+    vnp_ExpireDate: toVnpayDateNumber(expiresAt),
   });
 
   return {
@@ -103,9 +117,18 @@ const buildVnpayPaymentUrl = ({
   };
 };
 
+const verifyVnpayReturn = (query) => {
+  return getVnpayClient().verifyReturnUrl(query);
+};
+
 // check vnpay secure hash, if checksum wrong, be reject it
-const verifyVnpayResponse = (query) => {
+const verifyVnpayIpn = (query) => {
   return getVnpayClient().verifyIpnCall(query);
 };
 
-export { buildVnpayPaymentUrl, verifyVnpayResponse, getExpireMinutes };
+export {
+  buildVnpayPaymentUrl,
+  verifyVnpayReturn,
+  verifyVnpayIpn,
+  getExpireMinutes,
+};
