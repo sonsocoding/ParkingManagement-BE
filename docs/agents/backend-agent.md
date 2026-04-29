@@ -104,7 +104,9 @@ IPN failure/expiry -> payment FAILED -> booking CANCELLED -> slot AVAILABLE
 ### Monthly pass
 
 ```text
-purchase/renew -> validate vehicle ownership and eligibility
+purchase/renew -> validate pass eligibility for user + vehicle type
+pass covers any owned vehicle of that type
+only one active parking session may use the pass at a time
 VNPAY flow may produce paymentUrl
 success activates pass or applies renewal
 failure/expiry leaves no active pending purchase

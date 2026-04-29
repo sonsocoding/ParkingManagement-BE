@@ -10,7 +10,8 @@ export const PASS_PRICES = {
   MOTORBIKE: 300000, // 300,000 VND/month
 };
 
-// This pass can be used by any vehicle of the matched type owned by the user, but only one vehicle at a time.
+// A monthly pass belongs to a user + vehicle type and can be used by any owned vehicle of that type.
+// Only one active parking session may use the pass at a time.
 const registerMonthlyPass = asyncHandler(async (req, res) => {
   const { vehicleType, months } = req.body;
   const userId = req.user.id;

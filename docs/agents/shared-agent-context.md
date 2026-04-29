@@ -89,6 +89,7 @@ Do not silently change this shape on one side without updating the other side.
 
 ### Monthly Pass
 
+- `PENDING_PAYMENT`
 - `ACTIVE`
 - `EXPIRED`
 - `CANCELLED`
@@ -119,8 +120,9 @@ Do not silently change this shape on one side without updating the other side.
 
 ### Monthly pass
 
-- One active pass per vehicle at a time
-- Vehicle ownership must match the requesting user
+- One active pass per user and vehicle type at a time
+- A pass may be used by any vehicle of that type owned by the requesting user
+- A pass may cover only one active parking session at a time across all lots
 - VNPay may be used for purchase or renewal
 
 ## Coordination Rules

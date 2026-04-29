@@ -140,7 +140,8 @@ const checkIn = asyncHandler(async (req, res) => {
   }
 
   // --- Monthly Pass check ---
-  // If user has an ACTIVE monthly pass for this vehicle type, see if we can apply it.
+  // If the user has an ACTIVE monthly pass for this vehicle type, it may cover this vehicle.
+  // The same pass cannot be used by more than one active parking session at once.
   const activePass = await prisma.monthlyPass.findFirst({
     where: {
       userId,

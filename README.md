@@ -53,7 +53,9 @@ Booking created with PENDING_PAYMENT → VNPay payment row created (PENDING)
 
 **Monthly Pass VNPay Flow**
 ```
-Pass purchase created with PENDING_PAYMENT → VNPay payment URL returned
+Pass purchase created with PENDING_PAYMENT for a user + vehicle type → VNPay payment URL returned
+→ Active pass can be used by any owned vehicle of that type
+→ Only one active parking session may use that pass at a time across all lots
 → IPN success activates pass (or applies renewal)
 → IPN failure / expiry fails payment and cancels pending pass purchase
 ```
