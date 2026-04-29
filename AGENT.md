@@ -119,6 +119,22 @@ Read:
 - Do not create orphaned payments.
 - Do not assume cash bookings already have a payment record.
 
+## Documentation Update Rule
+
+When making a feature change, update the relevant agent docs in the same task if the change affects:
+
+- API routes, payloads, or response shape
+- auth, permissions, or role behavior
+- status enums or business flows
+- folder structure or important file locations
+- frontend/backend integration expectations
+
+Update only what changed:
+
+- backend-only change: update backend docs
+- frontend-only change: update frontend docs
+- shared contract change: update the shared agent context in both folders
+
 ## What Frontend Depends On
 
 The frontend relies on these backend contracts staying stable:

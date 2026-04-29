@@ -128,3 +128,5 @@ Do not silently change this shape on one side without updating the other side.
 - If backend changes route shape, status names, required fields, or auth behavior, update this file.
 - If frontend depends on a new backend field for rendering or navigation, update this file.
 - If a change affects VNPay redirect or return handling, both sides should review it.
+- Feature work should update the relevant docs in the same task, not as a later cleanup.
+- Shared-contract changes must be mirrored in both backend and frontend shared agent context files.
