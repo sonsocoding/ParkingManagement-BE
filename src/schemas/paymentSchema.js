@@ -34,3 +34,21 @@ export const updatePaymentStatusSchema = z.object({
     status: paymentStatusEnum,
   }),
 });
+
+// Schema for GET /api/payments/revenue-overview?days=7
+export const getRevenueOverviewSchema = z.object({
+  query: z.object({
+    days: z.coerce
+      .number()
+      .int("Days must be a whole number")
+      .min(1, "Days must be at least 1")
+      .max(31, "Days must be 31 or fewer")
+      .default(7),
+    weekOffset: z.coerce
+      .number()
+      .int("Week offset must be a whole number")
+      .min(0, "Week offset cannot be negative")
+      .max(52, "Week offset must be 52 or fewer")
+      .default(0),
+  }),
+});

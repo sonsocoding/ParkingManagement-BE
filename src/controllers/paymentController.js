@@ -18,6 +18,15 @@ const paymentInclude = {
 const formatPaymentsResponse = (payments, message) =>
   formatSuccess({ payments }, message);
 
+const formatDayLabel = (date) =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+
+const formatDateRangeLabel = (startDate, endDate) =>
+  `${formatDayLabel(startDate)} - ${formatDayLabel(endDate)}`;
+
 const VALID_TRANSITIONS = {
   PENDING: ["SUCCESS", "FAILED"],
   SUCCESS: ["REFUNDED"],
@@ -201,6 +210,71 @@ const getAllPayment = asyncHandler(async (req, res) => {
     .json(formatPaymentsResponse(payments, "Payments fetched successfully"));
 });
 
+const getRevenueOverview = asyncHandler(async (req, res) => {
+  const days = Number(req.query.days || 7);
+  const weekOffset = Number(req.query.weekOffset || 0);
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() - weekOffset * 7);
+  endDate.setHours(23, 59, 59, 999);
+
+  const startDate = new Date(endDate);
+  startDate.setHours(0, 0, 0, 0);
+  startDate.setDate(startDate.getDate() - (days - 1));
+
+  const successfulPayments = await prisma.payment.findMany({
+    where: {
+      status: "SUCCESS",
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+    select: {
+      amount: true,
+      createdAt: true,
+    },
+  });
+
+  const dailyRevenueMap = new Map();
+  for (let index = 0; index < days; index += 1) {
+    const day = new Date(startDate);
+    day.setDate(startDate.getDate() + index);
+    dailyRevenueMap.set(day.toDateString(), {
+      date: formatDayLabel(day),
+      amount: 0,
+    });
+  }
+
+  for (const payment of successfulPayments) {
+    const paymentDate = new Date(payment.createdAt);
+    paymentDate.setHours(0, 0, 0, 0);
+
+    const revenueDay = dailyRevenueMap.get(paymentDate.toDateString());
+    if (!revenueDay) continue;
+
+    revenueDay.amount += Number(payment.amount) || 0;
+  }
+
+  const dailyRevenue = Array.from(dailyRevenueMap.values());
+  const totalRevenue = dailyRevenue.reduce((sum, day) => sum + day.amount, 0);
+  const todayRevenue = dailyRevenue.at(-1)?.amount || 0;
+
+  return res.status(200).json(
+    formatSuccess(
+      {
+        revenueOverview: {
+          todayRevenue,
+          totalRevenue,
+          dailyRevenue,
+          weekOffset,
+          dateRangeLabel: formatDateRangeLabel(startDate, endDate),
+        },
+      },
+      "Revenue overview fetched successfully",
+    ),
+  );
+});
+
 const getPaymentByUserId = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const payments = await prisma.payment.findMany({
@@ -339,6 +413,7 @@ export {
   createPayment,
   getOwnPayment,
   getAllPayment,
+  getRevenueOverview,
   getPaymentByUserId,
   getPaymentById,
   updatePaymentStatus,

@@ -232,6 +232,12 @@ async function main() {
   const now = new Date();
   const hour = 60 * 60 * 1000;
   const day = 24 * hour;
+  const daysAgoAt = (daysAgo, hourOfDay = 9, minute = 0) => {
+    const date = new Date(now);
+    date.setDate(date.getDate() - daysAgo);
+    date.setHours(hourOfDay, minute, 0, 0);
+    return date;
+  };
 
   const createBooking = async ({
     userId,
@@ -247,6 +253,7 @@ async function main() {
     slotStatus,
     referenceId,
     createPayment = false,
+    paymentCreatedAt,
   }) => {
     const booking = await prisma.booking.create({
       data: {
@@ -271,6 +278,8 @@ async function main() {
           method: paymentMethod,
           status: paymentStatus,
           referenceId,
+          createdAt: paymentCreatedAt,
+          updatedAt: paymentCreatedAt,
         },
       });
     }
@@ -301,6 +310,7 @@ async function main() {
     referenceId,
     createPayment = false,
     paymentLink = "parkingRecord",
+    paymentCreatedAt,
   }) => {
     const record = await prisma.parkingRecord.create({
       data: {
@@ -327,6 +337,8 @@ async function main() {
           method: paymentMethod,
           status: paymentStatus,
           referenceId,
+          createdAt: paymentCreatedAt,
+          updatedAt: paymentCreatedAt,
         },
       });
     }
@@ -392,6 +404,7 @@ async function main() {
       paymentMethod: "VNPAY",
       referenceId: "VNPAY-BOOKING-1001",
       createPayment: true,
+      paymentCreatedAt: daysAgoAt(1, 10, 15),
     },
     {
       user: appUsers[10],
@@ -406,6 +419,7 @@ async function main() {
       paymentMethod: "VNPAY",
       referenceId: "VNPAY-BOOKING-1002",
       createPayment: true,
+      paymentCreatedAt: daysAgoAt(3, 14, 45),
     },
     {
       user: appUsers[9],
@@ -435,6 +449,7 @@ async function main() {
       referenceId: "VNPAY-BOOKING-1003",
       createPayment: true,
       slotStatus: "AVAILABLE",
+      paymentCreatedAt: daysAgoAt(5, 16, 20),
     },
   ];
 
@@ -453,6 +468,7 @@ async function main() {
       slotStatus: item.slotStatus ?? "RESERVED",
       referenceId: item.referenceId,
       createPayment: item.createPayment,
+      paymentCreatedAt: item.paymentCreatedAt,
     });
   }
 
@@ -509,6 +525,7 @@ async function main() {
     slotStatus: "RESERVED",
     referenceId: "VNPAY-BOOKING-2001",
     createPayment: true,
+    paymentCreatedAt: daysAgoAt(2, 11, 30),
   });
 
   const pastScenarios = [
@@ -524,6 +541,7 @@ async function main() {
       paymentMethod: "CASH",
       booking: true,
       referenceId: null,
+      paymentCreatedAt: daysAgoAt(2, 18, 10),
     },
     {
       user: appUsers[5],
@@ -537,6 +555,7 @@ async function main() {
       paymentMethod: "CASH",
       booking: false,
       referenceId: null,
+      paymentCreatedAt: daysAgoAt(4, 13, 40),
     },
     {
       user: appUsers[6],
@@ -550,6 +569,7 @@ async function main() {
       paymentMethod: "CASH",
       booking: false,
       referenceId: null,
+      paymentCreatedAt: daysAgoAt(6, 9, 25),
     },
     {
       user: appUsers[9],
@@ -563,6 +583,63 @@ async function main() {
       paymentMethod: "VNPAY",
       booking: true,
       referenceId: "VNPAY-BOOKING-3003",
+      paymentCreatedAt: daysAgoAt(9, 15, 5),
+    },
+    {
+      user: appUsers[3],
+      plate: "43F1-76543",
+      slot: "C-16",
+      lotId: parkingLot1.id,
+      startDaysAgo: 1,
+      durationHours: 2,
+      amount: 20000,
+      paymentStatus: "SUCCESS",
+      paymentMethod: "CASH",
+      booking: false,
+      referenceId: null,
+      paymentCreatedAt: daysAgoAt(1, 8, 50),
+    },
+    {
+      user: appUsers[7],
+      plate: "15A-88990",
+      slot: "B-16",
+      lotId: parkingLot1.id,
+      startDaysAgo: 3,
+      durationHours: 4,
+      amount: 200000,
+      paymentStatus: "SUCCESS",
+      paymentMethod: "CASH",
+      booking: true,
+      referenceId: null,
+      paymentCreatedAt: daysAgoAt(3, 19, 35),
+    },
+    {
+      user: appUsers[8],
+      plate: "37H1-34567",
+      slot: "F-3",
+      lotId: parkingLot2.id,
+      startDaysAgo: 7,
+      durationHours: 6,
+      amount: 30000,
+      paymentStatus: "SUCCESS",
+      paymentMethod: "CASH",
+      booking: false,
+      referenceId: null,
+      paymentCreatedAt: daysAgoAt(7, 12, 5),
+    },
+    {
+      user: appUsers[10],
+      plate: "99A-66778",
+      slot: "G-2",
+      lotId: parkingLot3.id,
+      startDaysAgo: 10,
+      durationHours: 7,
+      amount: 420000,
+      paymentStatus: "SUCCESS",
+      paymentMethod: "VNPAY",
+      booking: true,
+      referenceId: "VNPAY-BOOKING-3010",
+      paymentCreatedAt: daysAgoAt(10, 17, 15),
     },
   ];
 
@@ -585,6 +662,7 @@ async function main() {
         paymentMethod: item.paymentMethod,
         createPayment: item.paymentMethod === "VNPAY",
         referenceId: item.referenceId,
+        paymentCreatedAt: item.paymentCreatedAt,
       });
       bookingId = booking.id;
     }
@@ -604,6 +682,7 @@ async function main() {
       referenceId: item.referenceId,
       createPayment: item.paymentMethod === "CASH" || !item.booking,
       paymentLink: item.booking ? "booking" : "parkingRecord",
+      paymentCreatedAt: item.paymentCreatedAt,
     });
   }
 
@@ -618,6 +697,7 @@ async function main() {
       method: "VNPAY",
       paymentStatus: "SUCCESS",
       referenceId: "PASS-2026-04-U1",
+      paymentCreatedAt: daysAgoAt(8, 10, 0),
     },
     {
       userId: appUsers[2].id,
@@ -629,6 +709,7 @@ async function main() {
       method: "VNPAY",
       paymentStatus: "SUCCESS",
       referenceId: "PASS-2026-03-U3",
+      paymentCreatedAt: daysAgoAt(12, 9, 30),
     },
     {
       userId: appUsers[4].id,
@@ -640,6 +721,7 @@ async function main() {
       method: "VNPAY",
       paymentStatus: "REFUNDED",
       referenceId: "PASS-2026-05-U5",
+      paymentCreatedAt: daysAgoAt(6, 16, 45),
     },
     {
       userId: appUsers[6].id,
@@ -651,6 +733,7 @@ async function main() {
       method: "VNPAY",
       paymentStatus: "PENDING",
       referenceId: "PASS-2026-05-U7-PENDING",
+      paymentCreatedAt: daysAgoAt(0, 14, 20),
     },
   ];
 
@@ -674,6 +757,8 @@ async function main() {
         method: item.method,
         status: item.paymentStatus,
         referenceId: item.referenceId,
+        createdAt: item.paymentCreatedAt,
+        updatedAt: item.paymentCreatedAt,
       },
     });
   }

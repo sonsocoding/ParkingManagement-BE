@@ -6,13 +6,18 @@ import {
   createPayment,
   getOwnPayment,
   getAllPayment,
+  getRevenueOverview,
   getPaymentByUserId,
   getPaymentById,
   updatePaymentStatus,
   handleVnpayReturn,
   handleVnpayIpn,
 } from "../controllers/paymentController.js";
-import { createPaymentSchema, updatePaymentStatusSchema } from "../schemas/paymentSchema.js";
+import {
+  createPaymentSchema,
+  getRevenueOverviewSchema,
+  updatePaymentStatusSchema,
+} from "../schemas/paymentSchema.js";
 
 const router = express.Router();
 
@@ -26,6 +31,12 @@ router.get("/me", authorize("USER"), getOwnPayment);
 
 // admin
 router.get("/", authorize("ADMIN"), getAllPayment);
+router.get(
+  "/revenue-overview",
+  authorize("ADMIN"),
+  validate(getRevenueOverviewSchema),
+  getRevenueOverview,
+);
 router.get("/user/:userId", authorize("ADMIN"), getPaymentByUserId);
 router.get("/:id", authorize("ADMIN"), getPaymentById);
 

@@ -101,6 +101,7 @@ GET /api/bookings                     → authenticate + authorize("ADMIN")
 GET /api/bookings/:id                 → authenticate + authorize("ADMIN")
 GET /api/records                      → authenticate + authorize("ADMIN")
 GET /api/payments                     → authenticate + authorize("ADMIN")
+GET /api/payments/revenue-overview    → authenticate + authorize("ADMIN")
 GET /api/payments/:id                 → authenticate + authorize("ADMIN")
 GET /api/payments/user/:userId        → authenticate + authorize("ADMIN")
 
