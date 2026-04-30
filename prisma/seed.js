@@ -408,7 +408,7 @@ async function main() {
 
   const reservedBookings = [
     {
-      user: appUsers[0],
+      user: appUsers[11],
       plate: "35A-10101",
       slot: "B-13",
       lotId: parkingLot1.id,
@@ -422,7 +422,7 @@ async function main() {
       createPayment: true,
     },
     {
-      user: appUsers[4],
+      user: appUsers[11],
       plate: "47P1-88901",
       slot: "D-13",
       lotId: parkingLot1.id,
@@ -436,7 +436,7 @@ async function main() {
       createPayment: true,
     },
     {
-      user: appUsers[7],
+      user: appUsers[8],
       plate: "43A-55667",
       slot: "B-14",
       lotId: parkingLot1.id,

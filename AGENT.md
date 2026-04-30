@@ -109,7 +109,7 @@ Read:
 - Booking-backed check-in requires a `RESERVED` slot and a `CONFIRMED` booking.
 - Booking-backed check-in should respect the booking's chosen payment method and must not silently auto-apply a pass to cash/VNPay bookings.
 - Checkout releases the slot back to `AVAILABLE`.
-- Monthly passes are tied to one vehicle and one vehicle type.
+- Monthly passes are tied to one user and one vehicle type, and can cover any vehicle of that type owned by that user.
 
 ## Engineering Rules
 
