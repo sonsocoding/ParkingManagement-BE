@@ -345,23 +345,10 @@ async function main() {
     { slot: "A-1", plate: "30A-12345", user: appUsers[0] },
     { slot: "A-2", plate: "30K-56789", user: appUsers[1] },
     { slot: "A-3", plate: "88A-99887", user: appUsers[2] },
-    { slot: "A-4", plate: "51G-31313", user: appUsers[3] },
     { slot: "A-5", plate: "34A-68686", user: appUsers[4] },
     { slot: "A-6", plate: "29A-11223", user: appUsers[5] },
     { slot: "A-7", plate: "30G-77889", user: appUsers[6] },
     { slot: "A-8", plate: "15A-88990", user: appUsers[7] },
-    { slot: "A-9", plate: "43A-55667", user: appUsers[8] },
-    { slot: "A-10", plate: "18A-22446", user: appUsers[9] },
-    { slot: "A-11", plate: "99A-66778", user: appUsers[10] },
-    { slot: "A-12", plate: "35A-10101", user: appUsers[11] },
-    { slot: "B-1", plate: "30A-12345", user: appUsers[0] },
-    { slot: "B-2", plate: "30K-56789", user: appUsers[1] },
-    { slot: "B-3", plate: "88A-99887", user: appUsers[2] },
-    { slot: "B-4", plate: "51G-31313", user: appUsers[3] },
-    { slot: "B-5", plate: "34A-68686", user: appUsers[4] },
-    { slot: "B-6", plate: "29A-11223", user: appUsers[5] },
-    { slot: "B-7", plate: "30G-77889", user: appUsers[6] },
-    { slot: "B-8", plate: "15A-88990", user: appUsers[7] },
   ];
 
   const lot1OccupiedBikes = [
@@ -374,21 +361,6 @@ async function main() {
     { slot: "C-7", plate: "14B7-55678", user: appUsers[6] },
     { slot: "C-8", plate: "36M2-90123", user: appUsers[7] },
     { slot: "C-9", plate: "37H1-34567", user: appUsers[8] },
-    { slot: "C-10", plate: "92K1-77889", user: appUsers[9] },
-    { slot: "C-11", plate: "59T2-11224", user: appUsers[10] },
-    { slot: "C-12", plate: "47P1-88901", user: appUsers[11] },
-    { slot: "D-1", plate: "29M1-45678", user: appUsers[0] },
-    { slot: "D-2", plate: "30H7-23456", user: appUsers[1] },
-    { slot: "D-3", plate: "17B2-11122", user: appUsers[2] },
-    { slot: "D-4", plate: "43F1-76543", user: appUsers[3] },
-    { slot: "D-5", plate: "29X3-88991", user: appUsers[4] },
-    { slot: "D-6", plate: "30L9-22334", user: appUsers[5] },
-    { slot: "D-7", plate: "14B7-55678", user: appUsers[6] },
-    { slot: "D-8", plate: "36M2-90123", user: appUsers[7] },
-    { slot: "D-9", plate: "37H1-34567", user: appUsers[8] },
-    { slot: "D-10", plate: "92K1-77889", user: appUsers[9] },
-    { slot: "D-11", plate: "59T2-11224", user: appUsers[10] },
-    { slot: "D-12", plate: "47P1-88901", user: appUsers[11] },
   ];
 
   for (const [index, item] of [...lot1OccupiedCars, ...lot1OccupiedBikes].entries()) {
@@ -422,8 +394,8 @@ async function main() {
       createPayment: true,
     },
     {
-      user: appUsers[11],
-      plate: "47P1-88901",
+      user: appUsers[10],
+      plate: "59T2-11224",
       slot: "D-13",
       lotId: parkingLot1.id,
       startOffsetHours: 2,
@@ -436,8 +408,8 @@ async function main() {
       createPayment: true,
     },
     {
-      user: appUsers[8],
-      plate: "43A-55667",
+      user: appUsers[9],
+      plate: "18A-22446",
       slot: "B-14",
       lotId: parkingLot1.id,
       startOffsetHours: 3,
@@ -721,6 +693,51 @@ async function main() {
   const occupiedSlots = allSlots.filter((slot) => slot.status === "OCCUPIED").length;
   const reservedSlots = allSlots.filter((slot) => slot.status === "RESERVED").length;
   const maintenanceSlots = allSlots.filter((slot) => slot.status === "MAINTENANCE").length;
+
+  const [activeBookings, activeParkingRecords] = await Promise.all([
+    prisma.booking.findMany({
+      where: {
+        status: {
+          in: ["PENDING_PAYMENT", "CONFIRMED"],
+        },
+      },
+      select: {
+        id: true,
+        vehicleId: true,
+      },
+    }),
+    prisma.parkingRecord.findMany({
+      where: {
+        status: "CHECKED_IN",
+      },
+      select: {
+        id: true,
+        vehicleId: true,
+      },
+    }),
+  ]);
+
+  const activeUsageByVehicle = new Map();
+  for (const usage of [
+    ...activeBookings.map((booking) => ({ ...booking, kind: "booking" })),
+    ...activeParkingRecords.map((record) => ({ ...record, kind: "parkingRecord" })),
+  ]) {
+    const current = activeUsageByVehicle.get(usage.vehicleId) ?? [];
+    current.push(`${usage.kind}:${usage.id}`);
+    activeUsageByVehicle.set(usage.vehicleId, current);
+  }
+
+  const duplicateActiveUsage = [...activeUsageByVehicle.entries()].filter(
+    ([, usages]) => usages.length > 1,
+  );
+
+  if (duplicateActiveUsage.length > 0) {
+    throw new Error(
+      `Seed contains duplicate active vehicle usage: ${duplicateActiveUsage
+        .map(([vehicleId, usages]) => `${vehicleId} => ${usages.join(", ")}`)
+        .join("; ")}`,
+    );
+  }
 
   console.log("\n🎉 Database seed completed successfully!\n");
   console.log("📊 Summary:");

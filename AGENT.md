@@ -107,6 +107,7 @@ Read:
 - `MONTHLY_PASS` booking creates a confirmed booking only when an eligible active pass covers that vehicle type and booking window.
 - Walk-in check-in requires an `AVAILABLE` slot.
 - Booking-backed check-in requires a `RESERVED` slot and a `CONFIRMED` booking.
+- A vehicle may have at most one active usage at a time: either an active booking (`PENDING_PAYMENT`/`CONFIRMED`) or one active parking session (`CHECKED_IN`).
 - Booking-backed check-in should respect the booking's chosen payment method and must not silently auto-apply a pass to cash/VNPay bookings.
 - Checkout releases the slot back to `AVAILABLE`.
 - Monthly passes are tied to one user and one vehicle type, and can cover any vehicle of that type owned by that user.

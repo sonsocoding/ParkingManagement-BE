@@ -5,6 +5,10 @@ import {
   ensureMonthlyPassAvailableForCheckIn,
   findEligibleMonthlyPass,
 } from "../utils/monthlyPass.js";
+import {
+  assertVehicleAvailableForActiveUse,
+  HttpError,
+} from "../utils/activeVehicleUsage.js";
 
 const parkingRecordInclude = {
   vehicle: {
@@ -97,20 +101,9 @@ const checkIn = asyncHandler(async (req, res) => {
     return res.status(403).json(formatError("This is not your vehicle"));
   }
 
-  // check if vehicle is already checked in
-  const existingRecord = await prisma.parkingRecord.findFirst({
-    where: {
-      vehicleId,
-      status: "CHECKED_IN",
-    },
-  });
-
   // check if vehicle type match slot type
   if (vehicle.vehicleType !== parkingSlot.vehicleType) {
     return res.status(400).json(formatError("Vehicle type does not match slot type"));
-  }
-  if (existingRecord) {
-    return res.status(400).json(formatError("Vehicle is already checked in"));
   }
 
   // If user has a booking, validate it and check if we need to free their original slot
@@ -173,6 +166,20 @@ const checkIn = asyncHandler(async (req, res) => {
 
       appliedMonthlyPassId = activePass.id;
     }
+  }
+
+  try {
+    // Booking-backed check-in excludes its own booking from the conflict scan.
+    // Without that exclusion, every confirmed booking would block itself.
+    await assertVehicleAvailableForActiveUse(prisma, {
+      vehicleId,
+      excludeBookingId: bookingId || null,
+    });
+  } catch (error) {
+    if (error instanceof HttpError) {
+      return res.status(error.statusCode).json(formatError(error.message));
+    }
+    throw error;
   }
 
   const operations = [

@@ -123,6 +123,8 @@ Do not silently change this shape on one side without updating the other side.
 
 - Walk-in check-in uses an `AVAILABLE` slot
 - Booking-backed check-in uses a `RESERVED` slot plus confirmed booking
+- A vehicle may have only one active usage at a time across bookings and parking sessions
+- Active usage means booking status `PENDING_PAYMENT` or `CONFIRMED`, or parking record status `CHECKED_IN`
 - Check-in should only attach a monthly pass when the booking explicitly chose `MONTHLY_PASS`
 - Checkout returns slot to `AVAILABLE`
 
