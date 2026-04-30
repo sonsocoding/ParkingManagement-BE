@@ -112,10 +112,18 @@ Do not silently change this shape on one side without updating the other side.
 - IPN success confirms booking
 - Failure or expiry cancels booking and releases slot
 
+### Booking with Monthly Pass
+
+- Create booking only if an eligible active pass covers the selected vehicle type and booking window
+- Reserve slot
+- Mark booking `CONFIRMED`
+- Do not create a separate parking payment
+
 ### Check-in and checkout
 
 - Walk-in check-in uses an `AVAILABLE` slot
 - Booking-backed check-in uses a `RESERVED` slot plus confirmed booking
+- Check-in should only attach a monthly pass when the booking explicitly chose `MONTHLY_PASS`
 - Checkout returns slot to `AVAILABLE`
 
 ### Monthly pass

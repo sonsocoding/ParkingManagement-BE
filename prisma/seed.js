@@ -257,6 +257,7 @@ async function main() {
         startTime,
         endTime,
         estimatedCost,
+        paymentMethod,
         status: bookingStatus,
       },
     });

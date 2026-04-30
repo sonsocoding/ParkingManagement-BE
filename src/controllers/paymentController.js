@@ -135,6 +135,11 @@ const createPayment = asyncHandler(async (req, res) => {
     if (!booking) {
       return res.status(404).json(formatError("Booking not found"));
     }
+    if (booking.paymentMethod === "MONTHLY_PASS") {
+      return res
+        .status(400)
+        .json(formatError("Do not create a direct payment for a monthly-pass-covered booking"));
+    }
     targetUserId = booking.userId;
   }
 

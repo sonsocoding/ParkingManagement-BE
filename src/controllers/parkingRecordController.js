@@ -1,6 +1,10 @@
 import { prisma } from "../config/db.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatSuccess, formatError } from "../utils/formatResponse.js";
+import {
+  ensureMonthlyPassAvailableForCheckIn,
+  findEligibleMonthlyPass,
+} from "../utils/monthlyPass.js";
 
 const parkingRecordInclude = {
   vehicle: {
@@ -111,6 +115,7 @@ const checkIn = asyncHandler(async (req, res) => {
 
   // If user has a booking, validate it and check if we need to free their original slot
   let oldSlotIdToFree = null;
+  let appliedMonthlyPassId = null;
   if (bookingId) {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -137,35 +142,35 @@ const checkIn = asyncHandler(async (req, res) => {
     if (booking.parkingSlotId !== parkingSlotId) {
       oldSlotIdToFree = booking.parkingSlotId;
     }
-  }
 
-  // --- Monthly Pass check ---
-  // If the user has an ACTIVE monthly pass for this vehicle type, it may cover this vehicle.
-  // The same pass cannot be used by more than one active parking session at once.
-  const activePass = await prisma.monthlyPass.findFirst({
-    where: {
-      userId,
-      vehicleType: vehicle.vehicleType,
-      status: "ACTIVE",
-      payment: {
-        is: {
-          status: "SUCCESS",
-        },
-      },
-    },
-  });
+    if (booking.paymentMethod === "MONTHLY_PASS") {
+      if (!booking.monthlyPassId) {
+        return res
+          .status(400)
+          .json(formatError("This monthly-pass booking is missing its linked pass."));
+      }
 
-  let appliedMonthlyPassId = null;
-  if (activePass) {
-    // Check if the pass is CURRENTLY being used by another vehicle
-    const passInUse = await prisma.parkingRecord.findFirst({
-      where: {
-        monthlyPassId: activePass.id,
-        status: "CHECKED_IN",
-      },
-    });
-    if (!passInUse) {
-      // The pass is free to use right now! Apply it.
+      const activePass = await findEligibleMonthlyPass(prisma, {
+        userId,
+        vehicleType: vehicle.vehicleType,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        monthlyPassId: booking.monthlyPassId,
+      });
+
+      if (!activePass) {
+        return res
+          .status(400)
+          .json(formatError("The linked monthly pass is no longer eligible for this booking."));
+      }
+
+      const passAvailable = await ensureMonthlyPassAvailableForCheckIn(prisma, activePass.id);
+      if (!passAvailable) {
+        return res
+          .status(409)
+          .json(formatError("This monthly pass is already in use by another active parking session."));
+      }
+
       appliedMonthlyPassId = activePass.id;
     }
   }
@@ -275,6 +280,12 @@ const checkOut = asyncHandler(async (req, res) => {
     actualCost = 0;
   }
 
+  const booking = parkingRecord.bookingId
+    ? await prisma.booking.findUnique({
+        where: { id: parkingRecord.bookingId },
+      })
+    : null;
+
   const { updatedRecord, updatedSlot, updatedPayment, updatedBooking } = await prisma.$transaction(async (tx) => {
     const updatedRecord = await tx.parkingRecord.update({
       where: { id },
@@ -299,7 +310,9 @@ const checkOut = asyncHandler(async (req, res) => {
         where: { bookingId: parkingRecord.bookingId },
       });
 
-      if (existingBookingPayment) {
+      if (booking?.paymentMethod === "MONTHLY_PASS") {
+        updatedPayment = null;
+      } else if (existingBookingPayment) {
         updatedPayment = await tx.payment.update({
           where: { id: existingBookingPayment.id },
           data: {

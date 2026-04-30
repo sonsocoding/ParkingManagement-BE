@@ -3,6 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { formatSuccess, formatError } from "../utils/formatResponse.js";
 import { createBookingSchema } from "../schemas/bookingSchema.js";
 import { buildVnpayPaymentUrl } from "../utils/vnpay.js";
+import { findEligibleMonthlyPass } from "../utils/monthlyPass.js";
 
 const VALID_TRANSITIONS = {
   PENDING_PAYMENT: ["CONFIRMED", "CANCELLED"],
@@ -49,6 +50,15 @@ const bookingInclude = {
       status: true,
     },
   },
+  monthlyPass: {
+    select: {
+      id: true,
+      vehicleType: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+    },
+  },
 };
 
 const formatBooking = (booking) => {
@@ -72,6 +82,38 @@ const calculateNewCost = async (startTime, endTime, existingBooking) => {
   const rate =
     vehicle.vehicleType === "CAR" ? parkingLot.carHourlyRate : parkingLot.motorbikeHourlyRate;
   return Number(rate) * hours;
+};
+
+const resolveMonthlyPassForBooking = async (db, existingBooking, updateData) => {
+  if (existingBooking.paymentMethod !== "MONTHLY_PASS") {
+    return existingBooking.monthlyPassId;
+  }
+
+  const effectiveVehicleId = updateData.vehicleId || existingBooking.vehicleId;
+  const effectiveStartTime = updateData.startTime || existingBooking.startTime;
+  const effectiveEndTime = updateData.endTime || existingBooking.endTime;
+
+  const vehicle = await db.vehicle.findUnique({
+    where: { id: effectiveVehicleId },
+  });
+
+  if (!vehicle) {
+    throw new Error("Vehicle not found");
+  }
+
+  const activePass = await findEligibleMonthlyPass(db, {
+    userId: existingBooking.userId,
+    vehicleType: vehicle.vehicleType,
+    startTime: effectiveStartTime,
+    endTime: effectiveEndTime,
+    monthlyPassId: existingBooking.monthlyPassId,
+  });
+
+  if (!activePass) {
+    throw new Error("The linked monthly pass no longer covers this updated booking.");
+  }
+
+  return activePass.id;
 };
 
 const createBooking = asyncHandler(async (req, res) => {
@@ -115,9 +157,27 @@ const createBooking = asyncHandler(async (req, res) => {
       (vehicle.vehicleType === "CAR" ? parkingLot.carHourlyRate : parkingLot.motorbikeHourlyRate) *
       hours;
 
-    // if pay by cash -> booking status = CONFIRMED,
-    // if pay by VNPAY -> booking status = PENDING_PAYMENT & create payment with PENDING status
-    const bookingStatus = paymentMethod === "VNPAY" ? "PENDING_PAYMENT" : "CONFIRMED";
+    let bookingStatus = "CONFIRMED";
+    let bookingMonthlyPassId = null;
+
+    if (paymentMethod === "VNPAY") {
+      bookingStatus = "PENDING_PAYMENT";
+    } else if (paymentMethod === "MONTHLY_PASS") {
+      const activePass = await findEligibleMonthlyPass(tx, {
+        userId,
+        vehicleType: vehicle.vehicleType,
+        startTime,
+        endTime,
+      });
+
+      if (!activePass) {
+        throw new Error(
+          "No eligible active monthly pass covers this vehicle type and booking time.",
+        );
+      }
+
+      bookingMonthlyPassId = activePass.id;
+    }
 
     const booking = await tx.booking.create({
       data: {
@@ -128,8 +188,11 @@ const createBooking = asyncHandler(async (req, res) => {
         startTime,
         endTime,
         estimatedCost,
+        paymentMethod,
         status: bookingStatus,
+        monthlyPassId: bookingMonthlyPassId,
       },
+      include: bookingInclude,
     });
 
     const updatedSlot = await tx.parkingSlot.update({
@@ -249,6 +312,8 @@ const updateOwnBooking = asyncHandler(async (req, res) => {
     );
   }
 
+  updateData.monthlyPassId = await resolveMonthlyPassForBooking(prisma, existingBooking, updateData);
+
   // If the user is changing their parking slot, swap slot reservations atomically
   const isChangingSlot = parkingSlotId && parkingSlotId !== existingBooking.parkingSlotId;
   if (isChangingSlot) {
@@ -308,6 +373,8 @@ const updateBookingById = asyncHandler(async (req, res) => {
       existingBooking,
     );
   }
+
+  updateData.monthlyPassId = await resolveMonthlyPassForBooking(prisma, existingBooking, updateData);
 
   const booking = await prisma.booking.update({
     where: { id },

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const bookingStatusEnum = z.enum(["PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"]);
-const paymentMethodEnum = z.enum(["CASH", "VNPAY"]);
+const paymentMethodEnum = z.enum(["CASH", "VNPAY", "MONTHLY_PASS"]);
 
 export const createBookingSchema = z.object({
   body: z
