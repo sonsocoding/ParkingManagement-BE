@@ -3,3 +3,5 @@ node_modules/
 src/generated/
 .DS_Store
 *.log
+AGENT.md
+docs/agents/

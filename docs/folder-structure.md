@@ -8,14 +8,13 @@ Use this file to quickly locate code in the `backend/` app.
 
 ```text
 backend/
-├── AGENT.md
 ├── docs/
-│   ├── agent.md
-│   ├── folder_structures.md
+│   ├── folder-structure.md
 │   ├── roles.md
 │   └── agents/
+│       ├── AGENT.md
+│       ├── README.md
 │       ├── backend-agent.md
-│       ├── backend-folder-structure.md
 │       └── shared-agent-context.md
 ├── prisma/
 │   ├── schema.prisma
@@ -31,6 +30,7 @@ backend/
 │   ├── routes/
 │   ├── schemas/
 │   └── utils/
+├── .env.example
 ├── package.json
 └── README.md
 ```
