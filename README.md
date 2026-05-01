@@ -1,5 +1,8 @@
 # Parking Management System - Backend
 
+Frontend repo: `https://github.com/sonsocoding/ParkingManagement-FE`  
+Backend repo: `https://github.com/sonsocoding/ParkingManagement-BE`
+
 This repository contains the backend for my parking management project. It is the part I focused on the most because I wanted to learn how real systems protect data, enforce business rules, and stay consistent when many actions happen at the same time.
 
 ## Overview
