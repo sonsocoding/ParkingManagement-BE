@@ -48,6 +48,8 @@ Payment note: users may have active bookings with no `Payment` row yet when the 
 
 **ADMIN** — Full system control. Can CRUD all resources and manage the infrastructure.
 
+Docker note: running the app in containers does not change these permissions. Docker only packages the backend and frontend processes; Neon remains the shared PostgreSQL database behind the same API authorization rules.
+
 ---
 
 ## Middleware Pattern
@@ -67,6 +69,7 @@ Request → authenticate (JWT) → [authorize (role check)] → [validate (zod)]
 
 ```
 # Public
+GET  /health                         ← container/process health check
 POST /api/auth/register
 POST /api/auth/login
 POST /api/auth/logout

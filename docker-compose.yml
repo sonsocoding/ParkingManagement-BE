@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      FRONTEND_URL: http://localhost:8080
+      BACKEND_URL: http://localhost:3000
+      VNPAY_RETURN_URL: http://localhost:8080/payments/vnpay-return
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3000/api
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

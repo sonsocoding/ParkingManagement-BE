@@ -23,6 +23,7 @@ This repository contains the backend for my parking management project. I focuse
 - `Zod`
 - `Swagger`
 - `VNPay sandbox`
+- `Docker`
 
 ## Key Features
 
@@ -57,6 +58,8 @@ backend/
 │   ├── routes/
 │   ├── schemas/
 │   └── utils/
+├── Dockerfile
+├── docker-compose.yml
 ├── package.json
 └── README.md
 ```
@@ -84,6 +87,31 @@ PORT=3000
 ```
 
 Swagger is available after startup at `http://localhost:3000/api-docs`.
+
+## Docker
+
+This project uses Neon as the PostgreSQL database, so Docker does **not** start a local database. The backend container reads the same `DATABASE_URL` from `.env` and connects to Neon over the internet.
+
+From the backend folder:
+
+```bash
+docker compose up --build
+```
+
+This starts:
+
+- Backend API on `http://localhost:3000`
+- Frontend app on `http://localhost:8080`
+
+Useful Docker commands:
+
+```bash
+docker compose run --rm backend npm run migrate:deploy
+docker compose run --rm backend npm run seed
+docker compose down
+```
+
+The backend image runs `npm start`, which maps to `node src/server.js`. The container also exposes `GET /health` so Docker or a human can quickly check whether the API process is responding.
 
 ## What This Project Shows
 

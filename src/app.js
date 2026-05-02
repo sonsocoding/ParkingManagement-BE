@@ -24,6 +24,16 @@ app.use(corsConfig);
 app.use(express.json()); // lets express read json from request body
 app.use(cookieParser()); // lets express access req.cookies
 
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "success",
+    data: {
+      service: "parking-management-backend",
+      uptime: process.uptime(),
+    },
+  });
+});
+
 // use routes
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
