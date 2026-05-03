@@ -1,5 +1,6 @@
 import cors from "cors";
 
+// allowed url from frontend to access backend api
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
@@ -8,7 +9,7 @@ const allowedOrigins = [
 
 export const corsConfig = cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow requests with no origin (like postman or curl)
     if (!origin) return callback(null, true);
 
     // Strict check against our whitelist
@@ -20,7 +21,7 @@ export const corsConfig = cors({
     }
   },
   credentials: true, // Required for cookies/sessions
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // able to call CRUD type API
+  allowedHeaders: ["Content-Type", "Authorization"], // able to send JSON and auth token
   maxage: 86400,
 });

@@ -24,12 +24,13 @@ app.use(corsConfig);
 app.use(express.json()); // lets express read json from request body
 app.use(cookieParser()); // lets express access req.cookies
 
+// check if the express server is running
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "success",
     data: {
       service: "parking-management-backend",
-      uptime: process.uptime(),
+      uptime: process.uptime(), // how long nodejs has been running
     },
   });
 });
